@@ -29,8 +29,6 @@ import torch.optim as optim
 from torchinfo import summary
 import cv2
 from torch.utils.tensorboard import SummaryWriter
-#from mem_top import mem_top
-#from pympler import tracker
 
 from nes_py.wrappers import JoypadSpace
 import gym_super_mario_bros
@@ -115,6 +113,7 @@ class SkipFrame(gym.Wrapper):
 
 
 class NoopResetEnv(gym.Wrapper):
+    '''From: https://github.com/BITminicc/OpenAI-gym-Breakout/blob/master/atari_wrappers.py'''
 
     def __init__(self, env, noop_max=30):
         """Sample initial states by taking random number of no-ops on reset.
@@ -544,7 +543,6 @@ if __name__ == '__main__':
         if args.r == 'video':
             # create save paths
             eval_videos_path = Path('eval_videos/' + str(datetime.now()).replace(' ', '-'))  # unique folder per eval run
-            #eval_videos_path.mkdir(parents=True)
             print(f'Videos path: {eval_videos_path}')
             env = RecordVideo(env, eval_videos_path)
         agent = Agent(env)
