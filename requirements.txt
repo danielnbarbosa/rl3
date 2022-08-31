@@ -1,0 +1,32 @@
+# data science
+matplotlib
+numpy
+scipy
+pandas
+scikit-learn
+
+# gym
+gym
+gym[classic_control]
+gym[box2d]
+gym[atari]
+gym[accept-rom-license]
+gym_super_mario_bros
+#box2d-py
+#flappy-bird-gym
+#procgen
+
+
+# development
+flake8
+yapf
+mem-top
+pympler
+memory-profiler
+
+# deep learning
+torch
+torchvision
+torchinfo
+opencv-python
+tensorboard

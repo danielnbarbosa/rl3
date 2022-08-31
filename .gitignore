@@ -1,0 +1,7 @@
+*.pth
+*.pkl
+runs
+videos_eval
+*.mp4
+*.meta.json
+*.log
