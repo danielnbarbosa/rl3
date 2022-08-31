@@ -54,7 +54,7 @@ if DEVICE == 'cpu':
 
     TRAIN_STEPS_MAX = 1_000_000  # train for this many steps, will go a little beyond to finish the current episode
     REPLAY_MEMORY_MIN = 20_000  # minimum amount of accumulated experience before before we begin sampling
-    REPLAY_MEMORY_SIZE = 50_000  # max size of replay memory buffer (100K buffer = 6GB RAM)
+    REPLAY_MEMORY_SIZE = 50_000  # max size of replay memory buffer
     BATCH_SIZE = 32  # number of items to randomly sample from replay memory
     SYNC_TARGET_MODEL_EVERY = 1000  # how often (in steps) to copy weights to target model
     LEARN_EVERY = 4  # update model weights every n steps via gradient descent
@@ -77,7 +77,7 @@ elif DEVICE == 'cuda':
 
     TRAIN_STEPS_MAX = 5_000_000  # train for this many steps, will go a little beyond to finish the current episode
     REPLAY_MEMORY_MIN = 20_000  # minimum amount of accumulated experience before before we begin sampling
-    REPLAY_MEMORY_SIZE = 100_000  # max size of replay memory buffer (100K buffer = 6GB RAM)
+    REPLAY_MEMORY_SIZE = 100_000  # max size of replay memory buffer
     BATCH_SIZE = 32  # number of items to randomly sample from replay memory
     SYNC_TARGET_MODEL_EVERY = 1000  # how often (in steps) to copy weights to target model
     LEARN_EVERY = 4  # update model weights every n steps via gradient descent
@@ -133,7 +133,6 @@ class NoopResetEnv(gym.Wrapper):
         else:
             noops = self.unwrapped.np_random.randint(1, self.noop_max + 1)  # pylint: disable=E1101
         assert noops > 0
-        print('noops:', noops)
         obs = None
         for _ in range(noops):
             obs, _, done, _ = self.env.step(self.noop_action)

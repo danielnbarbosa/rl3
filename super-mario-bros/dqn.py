@@ -12,6 +12,7 @@ Frameskip.
 import logging
 import random
 import time
+import pickle
 from pathlib import Path
 from collections import deque
 import argparse
@@ -28,8 +29,6 @@ import torch.optim as optim
 from torchinfo import summary
 import cv2
 from torch.utils.tensorboard import SummaryWriter
-#from mem_top import mem_top
-#from pympler import tracker
 
 from nes_py.wrappers import JoypadSpace
 import gym_super_mario_bros
@@ -41,12 +40,10 @@ TRAIN_STEPS_MAX = 50_000_000
 REPLAY_MEMORY_MIN = 200_000
 REPLAY_MEMORY_SIZE = 1_000_000
 SYNC_TARGET_MODEL_EVERY = 10_000
-EPS_MIN = .1
 EPS_DECAY_STEPS = 1_000_000
 '''
 
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
-ENV = 'SuperMarioBros-1-1-v0'
 
 # CPU Config
 if DEVICE == 'cpu':
@@ -54,9 +51,9 @@ if DEVICE == 'cpu':
 
     TRAIN_STEPS_MAX = 5_000_000  # train for this many steps, will go a little beyond to finish the current episode
     REPLAY_MEMORY_MIN = 20_000  # minimum amount of accumulated experience before before we begin sampling
-    REPLAY_MEMORY_SIZE = 100_000  # max size of replay memory buffer (100K buffer = 6GB RAM)
+    REPLAY_MEMORY_SIZE = 50_000  # max size of replay memory buffer
     BATCH_SIZE = 32  # number of items to randomly sample from replay memory
-    SYNC_TARGET_MODEL_EVERY = 1000  # how often (in steps) to copy weights to target model
+    SYNC_TARGET_MODEL_EVERY = 2000  # how often (in steps) to copy weights to target model
     LEARN_EVERY = 4  # update model weights every n steps via gradient descent
     FRAMES = 4  # number of observations to stack together to form the state
     FRAMESKIP = 4  # number of frames to repeat the same actions
@@ -68,18 +65,18 @@ if DEVICE == 'cpu':
     EPS_DECAY_STEPS = 200_000  # over how many steps to linearly reduce epsilon until it reaches EPS_MIN
 
     SHOW_PROGRESS_EVERY = 1  # how often (in episodes) to show training results
-    SAVE_MODEL_EVERY = 100  # how often (in episodes) to save intermediate models
+    SAVE_MODEL_EVERY = 1000  # how often (in episodes) to save intermediate models
     MOVING_AVERAGE = 100  # moving average window to use when printing intermediate results to console
 
 # GPU Config
 elif DEVICE == 'cuda':
     PYTORCH_THREADS = None  # might be helpful to set to 8 on M1 so it doesn't use efficency cores
 
-    TRAIN_STEPS_MAX = 5_000_000  # train for this many steps, will go a little beyond to finish the current episode
-    REPLAY_MEMORY_MIN = 20_000  # minimum amount of accumulated experience before before we begin sampling
-    REPLAY_MEMORY_SIZE = 100_000  # max size of replay memory buffer (100K buffer = 6GB RAM)
+    TRAIN_STEPS_MAX = 10_000_000  # train for this many steps, will go a little beyond to finish the current episode
+    REPLAY_MEMORY_MIN = 40_000  # minimum amount of accumulated experience before before we begin sampling
+    REPLAY_MEMORY_SIZE = 200_000  # max size of replay memory buffer
     BATCH_SIZE = 32  # number of items to randomly sample from replay memory
-    SYNC_TARGET_MODEL_EVERY = 1000  # how often (in steps) to copy weights to target model
+    SYNC_TARGET_MODEL_EVERY = 2000  # how often (in steps) to copy weights to target model
     LEARN_EVERY = 4  # update model weights every n steps via gradient descent
     FRAMES = 4  # number of observations to stack together to form the state
     FRAMESKIP = 4  # number of frames to repeat the same actions
@@ -91,7 +88,7 @@ elif DEVICE == 'cuda':
     EPS_DECAY_STEPS = 200_000  # over how many steps to linearly reduce epsilon until it reaches EPS_MIN
 
     SHOW_PROGRESS_EVERY = 1  # how often (in episodes) to show training results
-    SAVE_MODEL_EVERY = 100  # how often (in episodes) to save intermediate models
+    SAVE_MODEL_EVERY = 1000  # how often (in episodes) to save intermediate models
     MOVING_AVERAGE = 100  # moving average window to use when printing intermediate results to console
 
 
@@ -110,6 +107,38 @@ class SkipFrame(gym.Wrapper):
             if done:
                 break
         return obs, total_reward, done, info
+
+
+class NoopResetEnv(gym.Wrapper):
+    '''From: https://github.com/BITminicc/OpenAI-gym-Breakout/blob/master/atari_wrappers.py'''
+
+    def __init__(self, env, noop_max=30):
+        """Sample initial states by taking random number of no-ops on reset.
+        No-op is assumed to be action 0.
+        """
+        gym.Wrapper.__init__(self, env)
+        self.noop_max = noop_max
+        self.override_num_noops = None
+        self.noop_action = 0
+        #assert env.unwrapped.get_action_meanings()[0] == 'NOOP'
+
+    def reset(self, **kwargs):
+        """ Do no-op action for a number of steps in [1, noop_max]."""
+        self.env.reset(**kwargs)
+        if self.override_num_noops is not None:
+            noops = self.override_num_noops
+        else:
+            noops = self.unwrapped.np_random.randint(1, self.noop_max + 1)  # pylint: disable=E1101
+        assert noops > 0
+        obs = None
+        for _ in range(noops):
+            obs, _, done, _ = self.env.step(self.noop_action)
+            if done:
+                obs = self.env.reset(**kwargs)
+        return obs
+
+    def step(self, ac):
+        return self.env.step(ac)
 
 
 class Model2Layer(nn.Module):
@@ -297,7 +326,17 @@ class Agent:
         self.model.optimizer.step()  # Performs a single optimization step.
         return loss.detach().cpu().numpy()
 
-    def train(self):
+    def train(self, filename=None):
+        # optionally load saved model and associated replay memory to continue training
+        if filename:
+            print(f'Loading: {filename}, setting epsilon to {EPS_MIN}')
+            EPS_START = EPS_MIN
+            self.model.load_state_dict(torch.load(f'{filename}', map_location=torch.device('cpu')))
+            self.target_model.load_state_dict(torch.load(f'{filename}', map_location=torch.device('cpu')))
+            filename = Path(filename)
+            with open(filename.with_suffix('.pkl'), 'rb') as file:
+                self.replay_memory = pickle.load(file)
+
         # create save paths
         training_run_path = Path('training_runs/' + DEVICE + '-' + str(datetime.now()).replace(' ', '-'))  # unique folder per training run
         training_run_path.mkdir(parents=True)
@@ -341,9 +380,9 @@ class Agent:
                 next_state, reward, done, info = self.env.step(action)  # step the environment
 
                 # reward hacking
-                if done:
-                    if info['flag_get']:  # if mario reaches end of the level
-                        reward += 500.0
+                #if done:
+                #    if info['flag_get']:  # if mario reaches end of the level
+                #        reward += 500.0
                 logging.debug(f'Episode {n}, step {episode_steps}.  Took action {action}, received {round(reward, 2)} reward, done is {done}, info is {info}.')
                 t1_env = time.time()
                 episode_environment_time += (t1_env - t0_env)
@@ -400,14 +439,18 @@ class Agent:
             if n % SAVE_MODEL_EVERY == 0:
                 torch.save(self.model.state_dict(), models_path / f'episode_{n}.pth')
                 torch.save(self.model.state_dict(), models_path / 'latest.pth')
+                with open(models_path / 'latest.pkl', 'wb') as file:
+                    pickle.dump(self.replay_memory, file)
             if episode_reward >= max(rewards):
                 torch.save(self.model.state_dict(), models_path / 'best.pth')
         torch.save(self.model.state_dict(), models_path / 'final.pth')
+        with open(models_path / 'final.pkl', 'wb') as file:
+            pickle.dump(self.replay_memory, file)
         writer.flush()
         writer.close()
         return rewards, steps
 
-    def eval(self, episodes=10, epsilon=0.01, filename='model_final.pth', render=False):
+    def eval(self, episodes=10, epsilon=0.01, filename=None, render=False):
         'Evaluate trained agent.'
         self.model.load_state_dict(torch.load(f'{filename}', map_location=torch.device('cpu')))
         rewards = []
@@ -451,6 +494,7 @@ def moving_average(a, n=MOVING_AVERAGE):
 
 
 def pre_process_env(env):
+    env = NoopResetEnv(env)
     env = SkipFrame(env, skip=FRAMESKIP)
     env = GrayScaleObservation(env)
     env = ResizeObservation(env, 84)
@@ -477,24 +521,25 @@ if __name__ == '__main__':
 
     def train():
         gym.logger.set_level(gym.logger.ERROR)
-        env = gym_super_mario_bros.make(ENV)
+        env = gym_super_mario_bros.make('SuperMarioBrosRandomStages-v0', stages=['1-1', '1-2', '1-3', '1-4'])
         env = JoypadSpace(env, RIGHT_ONLY)
+        #env = gym.make(ENV, continuous=False)
         env = pre_process_env(env)
         agent = Agent(env)
-        rewards, steps = agent.train()
+        rewards, steps = agent.train(filename=args.f)
         env.close()
 
     def evaluate():
         #gym.logger.set_level(gym.logger.ERROR)
-        env = gym_super_mario_bros.make(ENV)
+        env = gym_super_mario_bros.make('SuperMarioBrosRandomStages-v0', stages=['1-1', '1-2', '1-3', '1-4'])
         env = JoypadSpace(env, RIGHT_ONLY)
+        #env = gym.make(ENV, continuous=False)
         env = pre_process_env(env)
         if args.s:
             env._max_episode_steps = args.s
         if args.r == 'video':
             # create save paths
             eval_videos_path = Path('eval_videos/' + str(datetime.now()).replace(' ', '-'))  # unique folder per eval run
-            #eval_videos_path.mkdir(parents=True)
             print(f'Videos path: {eval_videos_path}')
             env = RecordVideo(env, eval_videos_path)
         agent = Agent(env)
