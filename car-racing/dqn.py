@@ -12,6 +12,7 @@ Frameskip.
 import logging
 import random
 import time
+import pickle
 from pathlib import Path
 from collections import deque
 import argparse
@@ -298,7 +299,17 @@ class Agent:
         self.model.optimizer.step()  # Performs a single optimization step.
         return loss.detach().cpu().numpy()
 
-    def train(self):
+    def train(self, filename=None):
+        # optionally load saved model and associated replay memory to continue training
+        if filename:
+            print(f'Loading: {filename}, setting epsilon to {EPS_MIN}')
+            EPS_START = EPS_MIN
+            self.model.load_state_dict(torch.load(f'{filename}', map_location=torch.device('cpu')))
+            self.target_model.load_state_dict(torch.load(f'{filename}', map_location=torch.device('cpu')))
+            filename = Path(filename)
+            with open(filename.with_suffix('.pkl'), 'rb') as file:
+                self.replay_memory = pickle.load(file)
+
         # create save paths
         training_run_path = Path('training_runs/' + DEVICE + '-' + str(datetime.now()).replace(' ', '-'))  # unique folder per training run
         training_run_path.mkdir(parents=True)
@@ -401,14 +412,18 @@ class Agent:
             if n % SAVE_MODEL_EVERY == 0:
                 torch.save(self.model.state_dict(), models_path / f'episode_{n}.pth')
                 torch.save(self.model.state_dict(), models_path / 'latest.pth')
+                with open(models_path / 'latest.pkl', 'wb') as file:
+                    pickle.dump(self.replay_memory, file)
             if episode_reward >= max(rewards):
                 torch.save(self.model.state_dict(), models_path / 'best.pth')
         torch.save(self.model.state_dict(), models_path / 'final.pth')
+        with open(models_path / 'final.pkl', 'wb') as file:
+            pickle.dump(self.replay_memory, file)
         writer.flush()
         writer.close()
         return rewards, steps
 
-    def eval(self, episodes=10, epsilon=0.01, filename='model_final.pth', render=False):
+    def eval(self, episodes=10, epsilon=0.01, filename=None, render=False):
         'Evaluate trained agent.'
         self.model.load_state_dict(torch.load(f'{filename}', map_location=torch.device('cpu')))
         rewards = []
@@ -483,7 +498,7 @@ if __name__ == '__main__':
         env = gym.make(ENV, continuous=False)
         env = pre_process_env(env)
         agent = Agent(env)
-        rewards, steps = agent.train()
+        rewards, steps = agent.train(filename=args.f)
         env.close()
 
     def evaluate():

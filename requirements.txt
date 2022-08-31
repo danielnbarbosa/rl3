@@ -12,7 +12,6 @@ gym[box2d]
 gym[atari]
 gym[accept-rom-license]
 gym_super_mario_bros
-#box2d-py
 #flappy-bird-gym
 #procgen
 
