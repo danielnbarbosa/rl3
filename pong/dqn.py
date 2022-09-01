@@ -29,10 +29,6 @@ import torch.optim as optim
 from torchinfo import summary
 import cv2
 from torch.utils.tensorboard import SummaryWriter
-
-from nes_py.wrappers import JoypadSpace
-import gym_super_mario_bros
-from gym_super_mario_bros.actions import RIGHT_ONLY, SIMPLE_MOVEMENT
 '''
 Hyper parameters from DDQN paper:
 
@@ -40,6 +36,7 @@ TRAIN_STEPS_MAX = 50_000_000
 REPLAY_MEMORY_MIN = 200_000
 REPLAY_MEMORY_SIZE = 1_000_000
 SYNC_TARGET_MODEL_EVERY = 10_000
+EPS_MIN = .1
 EPS_DECAY_STEPS = 1_000_000
 '''
 
@@ -49,11 +46,11 @@ DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 if DEVICE == 'cpu':
     PYTORCH_THREADS = None  # might be helpful to set to 8 on M1 so it doesn't use efficency cores
 
-    TRAIN_STEPS_MAX = 5_000_000  # train for this many steps, will go a little beyond to finish the current episode
+    TRAIN_STEPS_MAX = 1_000_000  # train for this many steps, will go a little beyond to finish the current episode
     REPLAY_MEMORY_MIN = 20_000  # minimum amount of accumulated experience before before we begin sampling
     REPLAY_MEMORY_SIZE = 50_000  # max size of replay memory buffer
     BATCH_SIZE = 32  # number of items to randomly sample from replay memory
-    SYNC_TARGET_MODEL_EVERY = 2000  # how often (in steps) to copy weights to target model
+    SYNC_TARGET_MODEL_EVERY = 1000  # how often (in steps) to copy weights to target model
     LEARN_EVERY = 4  # update model weights every n steps via gradient descent
     FRAMES = 4  # number of observations to stack together to form the state
     FRAMESKIP = 4  # number of frames to repeat the same actions
@@ -62,10 +59,10 @@ if DEVICE == 'cpu':
     GAMMA = 0.99  # discount rate
     EPS_START = 1  # starting value of epsilon
     EPS_MIN = .1  # minimum value for epsilon
-    EPS_DECAY_STEPS = 200_000  # over how many steps to linearly reduce epsilon until it reaches EPS_MIN
+    EPS_DECAY_STEPS = 50_000  # over how many steps to linearly reduce epsilon until it reaches EPS_MIN
 
     SHOW_PROGRESS_EVERY = 1  # how often (in episodes) to show training results
-    SAVE_MODEL_EVERY = 1000  # how often (in episodes) to save intermediate models
+    SAVE_MODEL_EVERY = 100  # how often (in episodes) to save intermediate models
     MOVING_AVERAGE = 100  # moving average window to use when printing intermediate results to console
 
 # GPU Config
@@ -128,7 +125,7 @@ class NoopResetEnv(gym.Wrapper):
         if self.override_num_noops is not None:
             noops = self.override_num_noops
         else:
-            noops = self.unwrapped.np_random.randint(1, self.noop_max + 1)  # pylint: disable=E1101
+            noops = self.unwrapped.np_random.integers(1, self.noop_max + 1)  # pylint: disable=E1101
         assert noops > 0
         obs = None
         for _ in range(noops):
@@ -380,10 +377,6 @@ class Agent:
                 t0_env = time.time()
                 next_state, reward, done, info = self.env.step(action)  # step the environment
 
-                # reward hacking
-                #if done:
-                #    if info['flag_get']:  # if mario reaches end of the level
-                #        reward += 500.0
                 logging.debug(f'Episode {n}, step {episode_steps}.  Took action {action}, received {round(reward, 2)} reward, done is {done}, info is {info}.')
                 t1_env = time.time()
                 episode_environment_time += (t1_env - t0_env)
@@ -460,22 +453,21 @@ class Agent:
         for n in range(episodes):
             t0 = time.time()
             state = self.env.reset()
-            if render == 'video':
-                self.env.start_video_recorder()
+            #if render == 'video':
+            #    self.env.start_video_recorder()
             done = False
             episode_reward = 0
             episode_steps = 0
             self.model.eval()
             with torch.no_grad():
                 while not done:
-                    if render == 'human':
-                        self.env.render()
-                        time.sleep(FRAMESKIP / 100)
                     action = self._act(state, epsilon)  # take an action using e-greedy policy
                     state, reward, done, info = self.env.step(action)  # step the environment
                     episode_reward += reward  # accumulate reward
                     episode_steps += 1  # increment step count
             t1 = time.time()
+            #if render == 'video':
+            #    self.env.close_video_recorder()
             print(f'Agent ran for {episode_steps} steps, received {round(episode_reward, 2)} reward.  RunTime: {round(t1 - t0)}s')
             rewards.append(episode_reward)
             steps.append(episode_steps)
@@ -522,9 +514,7 @@ if __name__ == '__main__':
 
     def train():
         gym.logger.set_level(gym.logger.ERROR)
-        env = gym_super_mario_bros.make('SuperMarioBrosRandomStages-v0', stages=['1-1', '1-2', '1-3', '1-4'])
-        env = JoypadSpace(env, RIGHT_ONLY)
-        #env = gym.make(ENV, continuous=False)
+        env = gym.make('ALE/Pong-v5', full_action_space=False, frameskip=1, repeat_action_probability=0.01)
         env = pre_process_env(env)
         agent = Agent(env)
         rewards, steps = agent.train(filename=args.f)
@@ -532,9 +522,12 @@ if __name__ == '__main__':
 
     def evaluate():
         #gym.logger.set_level(gym.logger.ERROR)
-        env = gym_super_mario_bros.make('SuperMarioBrosRandomStages-v0', stages=['1-1', '1-2', '1-3', '1-4'])
-        env = JoypadSpace(env, RIGHT_ONLY)
-        #env = gym.make(ENV, continuous=False)
+        if args.r == 'human':
+            env = gym.make('ALE/Pong-v5', full_action_space=False, frameskip=1, repeat_action_probability=0.01, render_mode='human')
+        elif args.r == 'video':
+            env = gym.make('ALE/Pong-v5', full_action_space=False, frameskip=1, repeat_action_probability=0.01, render_mode='rgb_array')
+        else:
+            env = gym.make('ALE/Pong-v5', full_action_space=False, frameskip=1, repeat_action_probability=0.01)
         env = pre_process_env(env)
         if args.s:
             env._max_episode_steps = args.s
@@ -544,7 +537,7 @@ if __name__ == '__main__':
             print(f'Videos path: {eval_videos_path}')
             env = RecordVideo(env, eval_videos_path)
         agent = Agent(env)
-        rewards, steps = agent.eval(episodes=10, epsilon=0.01, filename=args.f, render=args.r)
+        rewards, steps = agent.eval(episodes=10, epsilon=0.01, filename=args.f)
         env.close()
 
     if args.m == 'train':

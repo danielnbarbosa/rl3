@@ -19,9 +19,9 @@ gym_super_mario_bros
 # development
 flake8
 yapf
-mem-top
-pympler
-memory-profiler
+#mem-top
+#pympler
+#memory-profiler
 
 # deep learning
 torch

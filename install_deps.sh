@@ -5,4 +5,4 @@
 sudo apt-get update
 sudo apt-get install -y swig python3-dev
 pip install --upgrade pip
-pip install gym gym[box2d] gym_super_mario_bros torchinfo opencv-python
+pip install gym gym[box2d] gym[accept-rom-license] gym[atari] gym_super_mario_bros torchinfo opencv-python

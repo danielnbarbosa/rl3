@@ -333,6 +333,7 @@ class Agent:
         # optionally load saved model and associated replay memory to continue training
         if filename:
             print(f'Loading: {filename}, setting epsilon to {EPS_MIN}')
+            global EPS_START
             EPS_START = EPS_MIN
             self.model.load_state_dict(torch.load(f'{filename}', map_location=torch.device('cpu')))
             self.target_model.load_state_dict(torch.load(f'{filename}', map_location=torch.device('cpu')))

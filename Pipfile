@@ -9,7 +9,7 @@ numpy = "*"
 scipy = "*"
 pandas = "*"
 scikit-learn = "*"
-gym = {extras = ["box2d"], version = "*"}
+gym = {extras = ["atari"], version = "*"}
 gym-super-mario-bros = "*"
 flake8 = "*"
 yapf = "*"
