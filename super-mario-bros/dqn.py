@@ -348,7 +348,6 @@ class Agent:
         print(f'Path: {training_run_path}')
 
         rewards = []  # total reward per episode
-        steps = []  # number of steps taken per episode
         train_steps = 0  # number of steps taken over entire training run
         n = 0  # episode count
         total_run_time = 0
@@ -412,7 +411,6 @@ class Agent:
                 eps = EPS_START - ((EPS_START - EPS_MIN) / EPS_DECAY_STEPS) * train_steps  # decay epsilon
                 eps = max(EPS_MIN, eps)
             rewards.append(episode_reward)
-            steps.append(episode_steps)
             smoothed_rewards = moving_average(rewards)
             t1 = time.time()
             episode_run_time = t1 - t0
@@ -435,7 +433,7 @@ class Agent:
             # show and save intermediate results
             if (n % SHOW_PROGRESS_EVERY == 0):
                 print(
-                    f'Ep: {n}\tAvgR: {round(smoothed_rewards[-1], 2)}\tBestAvgR: {round(np.max(smoothed_rewards), 2)}\tEps: {round(eps, 4)}\tRepBuf: {len(self.replay_memory)}\tSteps:{episode_steps}\tTotSteps: {np.sum(steps)}\tRunTime: {round(episode_run_time)}s ({round(episode_act_time)}/{round(episode_environment_time)}/{round(episode_learn_time)})\tTotRunTime: {round(total_run_time)}s\tSteps/s: {round(steps_per_second)}'
+                    f'Ep: {n}\tAvgR: {round(smoothed_rewards[-1], 2)}\tBestAvgR: {round(np.max(smoothed_rewards), 2)}\tEps: {round(eps, 4)}\tRepBuf: {len(self.replay_memory)}\tSteps:{episode_steps}\tTotSteps: {train_steps}\tRunTime: {round(episode_run_time)}s ({round(episode_act_time)}/{round(episode_environment_time)}/{round(episode_learn_time)})\tTotRunTime: {round(total_run_time)}s\tSteps/s: {round(steps_per_second)}'
                 )
             if n % SAVE_MODEL_EVERY == 0:
                 torch.save(self.model.state_dict(), models_path / f'episode_{n}.pth')
@@ -449,13 +447,10 @@ class Agent:
             pickle.dump(self.replay_memory, file)
         writer.flush()
         writer.close()
-        return rewards, steps
 
     def eval(self, episodes=10, epsilon=0.01, filename=None, render=False):
         'Evaluate trained agent.'
         self.model.load_state_dict(torch.load(f'{filename}', map_location=torch.device('cpu')))
-        rewards = []
-        steps = []
 
         for n in range(episodes):
             t0 = time.time()
@@ -477,11 +472,8 @@ class Agent:
                     episode_steps += 1  # increment step count
             t1 = time.time()
             print(f'Agent ran for {episode_steps} steps, received {round(episode_reward, 2)} reward.  RunTime: {round(t1 - t0)}s')
-            rewards.append(episode_reward)
-            steps.append(episode_steps)
         print()
         print(f'Average Episode Reward across {episodes} episodes: {np.mean(rewards)}')
-        return rewards, steps
 
 
 def moving_average(a, n=MOVING_AVERAGE):
@@ -527,7 +519,7 @@ if __name__ == '__main__':
         #env = gym.make(ENV, continuous=False)
         env = pre_process_env(env)
         agent = Agent(env)
-        rewards, steps = agent.train(filename=args.f)
+        agent.train(filename=args.f)
         env.close()
 
     def evaluate():
@@ -544,7 +536,7 @@ if __name__ == '__main__':
             print(f'Videos path: {eval_videos_path}')
             env = RecordVideo(env, eval_videos_path)
         agent = Agent(env)
-        rewards, steps = agent.eval(episodes=10, epsilon=0.01, filename=args.f, render=args.r)
+        agent.eval(episodes=10, epsilon=0.01, filename=args.f, render=args.r)
         env.close()
 
     if args.m == 'train':
