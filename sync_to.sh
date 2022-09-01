@@ -3,10 +3,10 @@
 # works on lambda and paperspace
 
 USER_IP=$1
-DIR="/Users/daniel/src/rl_class/"
+DIR="/Users/daniel/src/rl3/"
 ENV="super-mario-bros"
 
-scp $DIR/train.sh $DIR/install_deps.sh $DIR/rl2/$ENV/dqn.py ${USER_IP}:
+scp $DIR/train.sh $DIR/install_deps.sh $DIR/$ENV/dqn.py ${USER_IP}:
 
 # on cloud instance:
 # run install_deps.sh
