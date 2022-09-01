@@ -41,6 +41,7 @@ EPS_DECAY_STEPS = 1_000_000
 '''
 
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
+ENV = 'ALE/Pong-v5'
 
 # CPU Config
 if DEVICE == 'cpu':
@@ -445,6 +446,7 @@ class Agent:
         'Evaluate trained agent.'
         self.model.load_state_dict(torch.load(f'{filename}', map_location=torch.device('cpu')))
 
+        rewards = []  # total reward per episode
         for n in range(episodes):
             t0 = time.time()
             state = self.env.reset()
@@ -460,6 +462,7 @@ class Agent:
                     state, reward, done, info = self.env.step(action)  # step the environment
                     episode_reward += reward  # accumulate reward
                     episode_steps += 1  # increment step count
+            rewards.append(episode_reward)
             t1 = time.time()
             #if render == 'video':
             #    self.env.close_video_recorder()
@@ -506,7 +509,7 @@ if __name__ == '__main__':
 
     def train():
         gym.logger.set_level(gym.logger.ERROR)
-        env = gym.make('ALE/Pong-v5', full_action_space=False, frameskip=1, repeat_action_probability=0.01)
+        env = gym.make(ENV, full_action_space=False, frameskip=1, repeat_action_probability=0.01)
         env = pre_process_env(env)
         agent = Agent(env)
         agent.train(filename=args.f)
@@ -515,11 +518,11 @@ if __name__ == '__main__':
     def evaluate():
         #gym.logger.set_level(gym.logger.ERROR)
         if args.r == 'human':
-            env = gym.make('ALE/Pong-v5', full_action_space=False, frameskip=1, repeat_action_probability=0.01, render_mode='human')
+            env = gym.make(ENV, full_action_space=False, frameskip=1, repeat_action_probability=0.01, render_mode='human')
         elif args.r == 'video':
-            env = gym.make('ALE/Pong-v5', full_action_space=False, frameskip=1, repeat_action_probability=0.01, render_mode='rgb_array')
+            env = gym.make(ENV, full_action_space=False, frameskip=1, repeat_action_probability=0.01, render_mode='rgb_array')
         else:
-            env = gym.make('ALE/Pong-v5', full_action_space=False, frameskip=1, repeat_action_probability=0.01)
+            env = gym.make(ENV, full_action_space=False, frameskip=1, repeat_action_probability=0.01)
         env = pre_process_env(env)
         if args.s:
             env._max_episode_steps = args.s

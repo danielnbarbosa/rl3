@@ -455,6 +455,7 @@ class Agent:
         'Evaluate trained agent.'
         self.model.load_state_dict(torch.load(f'{filename}', map_location=torch.device('cpu')))
 
+        rewards = []  # total reward per episode
         for n in range(episodes):
             t0 = time.time()
             state = self.env.reset()
@@ -473,6 +474,7 @@ class Agent:
                     state, reward, done, info = self.env.step(action)  # step the environment
                     episode_reward += reward  # accumulate reward
                     episode_steps += 1  # increment step count
+            rewards.append(episode_reward)
             t1 = time.time()
             print(f'Agent ran for {episode_steps} steps, received {round(episode_reward, 2)} reward.  RunTime: {round(t1 - t0)}s')
         print()
