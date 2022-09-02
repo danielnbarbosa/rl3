@@ -4,7 +4,7 @@
 
 USER_IP=$1
 DIR="/Users/daniel/src/rl3/"
-ENV="atari"
+ENV="breakout"
 
 scp $DIR/train.sh $DIR/install_deps.sh $DIR/$ENV/dqn.py ${USER_IP}:
 

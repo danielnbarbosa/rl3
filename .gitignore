@@ -5,3 +5,5 @@ videos_eval
 *.mp4
 *.meta.json
 *.log
+!*/saved_training_runs/*/models/latest.pth
+!*/saved_training_runs/*/models/best.pth
