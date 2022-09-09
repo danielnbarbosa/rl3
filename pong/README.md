@@ -18,4 +18,4 @@ Average Episode Reward across 10 episodes: 20.5
 
 
 ## Play
-To play as human, run `play.sh`
+To play as human, run `python play.py`
