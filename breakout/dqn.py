@@ -342,7 +342,8 @@ class Agent:
         models_path = training_run_path / 'models'  # models
         models_path.mkdir()
         runs_path = training_run_path / 'runs'  # tensorboard logging
-        logging.basicConfig(filename=training_run_path / 'train.log', format='%(asctime)s %(levelname)-8s %(message)s', level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
+        # set level to logging.DEBUG to enable debug logging, set to logging.ERROR to disable
+        logging.basicConfig(filename=training_run_path / 'train.log', format='%(asctime)s %(levelname)-8s %(message)s', level=logging.ERROR, datefmt='%Y-%m-%d %H:%M:%S')
         print(f'Path: {training_run_path}')
 
         rewards = []  # total reward per episode
@@ -400,10 +401,10 @@ class Agent:
 
                 episode_reward += reward  # accumulate reward
                 episode_steps += 1  # increment episode step count
-                train_steps += 1  # increment training step count
                 state = next_state  # move to next state
                 eps = EPS_START - ((EPS_START - EPS_MIN) / EPS_DECAY_STEPS) * train_steps  # decay epsilon
                 eps = max(EPS_MIN, eps)
+            train_steps += episode_steps  # increment training run step count
             rewards.append(episode_reward)
             smoothed_rewards = moving_average(rewards)
             t1 = time.time()
