@@ -13,21 +13,15 @@ import logging
 import random
 import time
 import pickle
-from pathlib import Path
-from collections import deque
 import argparse
+from pathlib import Path
 from datetime import datetime
 import gym
-from gym.wrappers.record_video import RecordVideo
-from gym.wrappers.frame_stack import FrameStack
-from gym.wrappers.gray_scale_observation import GrayScaleObservation
-from gym.wrappers.resize_observation import ResizeObservation
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torchinfo import summary
-import cv2
 from torch.utils.tensorboard import SummaryWriter
 '''
 Hyper parameters from DDQN paper:
@@ -485,9 +479,9 @@ def moving_average(a, n=MOVING_AVERAGE):
 def pre_process_env(env):
     env = NoopResetEnv(env)
     env = SkipFrame(env, skip=FRAMESKIP)
-    env = GrayScaleObservation(env)
-    env = ResizeObservation(env, 84)
-    env = FrameStack(env, FRAMES)
+    env = gym.wrappers.gray_scale_observation.GrayScaleObservation(env)
+    env = gym.wrappers.resize_observation.ResizeObservation(env, 84)
+    env = gym.wrappers.frame_stack.FrameStack(env, FRAMES)
     return env
 
 
@@ -531,7 +525,7 @@ if __name__ == '__main__':
             # create save paths
             eval_videos_path = Path('eval_videos/' + str(datetime.now()).replace(' ', '-'))  # unique folder per eval run
             print(f'Videos path: {eval_videos_path}')
-            env = RecordVideo(env, eval_videos_path)
+            env = gym.wrappers.record_video.RecordVideo(env, eval_videos_path)
         agent = Agent(env)
         agent.eval(episodes=10, epsilon=0.01, filename=args.f)
         env.close()
