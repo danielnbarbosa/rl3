@@ -400,7 +400,7 @@ class Agent:
 
                 # evaluate
                 if (train_steps % EVAL_MODEL_EVERY == 0) and (train_steps != 0):
-                    eval_reward = self.eval(episodes=100, epsilon=0.01, filename=args.f)
+                    eval_reward = self.eval(episodes=100, epsilon=0.0)
 
                 episode_reward += reward  # accumulate reward
                 episode_steps += 1  # increment episode step count
@@ -432,7 +432,7 @@ class Agent:
             # show and save intermediate results
             if (n % SHOW_PROGRESS_EVERY == 0):
                 print(
-                    f'Ep: {n}\tAvgR: {round(smoothed_rewards[-1], 2)}\tBestAvgR: {round(np.max(smoothed_rewards), 2)}\tEps: {round(eps, 4)}\tRepBuf: {len(self.replay_memory)}\tSteps:{episode_steps}\tTotSteps: {train_steps}\tRunTime: {round(episode_run_time)}s ({round(episode_act_time)}/{round(episode_environment_time)}/{round(episode_learn_time)})\tTotRunTime: {round(total_run_time)}s\tSteps/s: {round(steps_per_second)}'
+                    f'Ep: {n}\tAvgR: {round(smoothed_rewards[-1], 2)}\tBestAvgR: {round(np.max(smoothed_rewards), 2)}\tEps: {round(eps, 4)}\tRepBuf: {len(self.replay_memory)}\tSteps:{episode_steps}\tTotSteps: {train_steps}\tRunTime: {round(episode_run_time)}s ({round(episode_act_time)}/{round(episode_environment_time)}/{round(episode_learn_time)})\tTotRunTime: {round(total_run_time)}s\tSteps/s: {round(steps_per_second)}\tEvalR: {eval_reward}'
                 )
             if n % SAVE_MODEL_EVERY == 0:
                 torch.save(self.model.state_dict(), models_path / f'episode_{n}.pth')
@@ -461,10 +461,20 @@ class Agent:
             done = False
             episode_reward = 0
             episode_steps = 0
+            lives = 5
+            info = {'lives': 5}
             self.model.eval()
             with torch.no_grad():
                 while not done:
-                    action = self._act(state, epsilon)  # take an action using e-greedy policy
+                    # after starting an episode or losing a life, do FIRE as first action to get the ball moving
+                    # needed due to reward hacking during training where episode ends after first loss of life
+                    if episode_steps == 0:
+                        action = 1
+                    elif info['lives'] < lives:
+                        action = 1
+                        lives -= 1
+                    else:
+                        action = self._act(state, epsilon)  # take an action using e-greedy policy
                     state, reward, done, info = self.env.step(action)  # step the environment
                     episode_reward += reward  # accumulate reward
                     episode_steps += 1  # increment step count
@@ -472,7 +482,7 @@ class Agent:
             t1 = time.time()
             #if render == 'video':
             #    self.env.close_video_recorder()
-            print(f'Agent ran for {episode_steps} steps, received {round(episode_reward, 2)} reward.  RunTime: {round(t1 - t0)}s')
+            print(f'Run {n}, agent ran for {episode_steps} steps, received {round(episode_reward, 2)} reward.  RunTime: {round(t1 - t0)}s')
         mean_reward = np.mean(rewards)
         print()
         print(f'Average Episode Reward across {episodes} episodes: {mean_reward}')
@@ -540,7 +550,7 @@ if __name__ == '__main__':
             print(f'Videos path: {eval_videos_path}')
             env = gym.wrappers.record_video.RecordVideo(env, eval_videos_path)
         agent = Agent(env)
-        agent.eval(episodes=100, epsilon=0.01, filename=args.f)
+        agent.eval(episodes=100, epsilon=0.0, filename=args.f)
         env.close()
 
     if args.m == 'train':
