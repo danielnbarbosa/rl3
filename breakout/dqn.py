@@ -534,7 +534,7 @@ if __name__ == '__main__':
         env.close()
 
     def evaluate():
-        #gym.logger.set_level(gym.logger.ERROR)
+        gym.logger.set_level(gym.logger.ERROR)
         if args.r == 'human':
             env = gym.make(ENV, full_action_space=False, frameskip=1, repeat_action_probability=0.01, render_mode='human')
         elif args.r == 'video':
@@ -548,7 +548,7 @@ if __name__ == '__main__':
             # create save paths
             eval_videos_path = Path('eval_videos/' + str(datetime.now()).replace(' ', '-'))  # unique folder per eval run
             print(f'Videos path: {eval_videos_path}')
-            env = gym.wrappers.record_video.RecordVideo(env, eval_videos_path)
+            env = gym.wrappers.record_video.RecordVideo(env, eval_videos_path, episode_trigger=lambda x: True)
         agent = Agent(env)
         agent.eval(episodes=100, epsilon=0.0, filename=args.f)
         env.close()
