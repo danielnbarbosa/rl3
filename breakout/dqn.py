@@ -456,8 +456,6 @@ class Agent:
         for n in range(episodes):
             t0 = time.time()
             state = self.env.reset()
-            #if render == 'video':
-            #    self.env.start_video_recorder()
             done = False
             episode_reward = 0
             episode_steps = 0
@@ -480,12 +478,10 @@ class Agent:
                     episode_steps += 1  # increment step count
             rewards.append(episode_reward)
             t1 = time.time()
-            #if render == 'video':
-            #    self.env.close_video_recorder()
             print(f'Run {n}, agent ran for {episode_steps} steps, received {round(episode_reward, 2)} reward.  RunTime: {round(t1 - t0)}s')
         mean_reward = np.mean(rewards)
         print()
-        print(f'Average Episode Reward across {episodes} episodes: {mean_reward}')
+        print(f'Average episode reward across {episodes} episodes: {mean_reward}.  Best reward: {max(rewards)}')
         return mean_reward
 
 
@@ -512,10 +508,10 @@ if __name__ == '__main__':
 
     # parse command line args
     parser = argparse.ArgumentParser()
-    parser.add_argument('-m', type=str)  # --mode: ('train', 'eval)
-    parser.add_argument('-f', type=str)  # --filename: model filename
-    parser.add_argument('-r', type=str)  # --render: ('human', 'video')
-    parser.add_argument('-s', type=int)  # --steps: number of steps to run
+    parser.add_argument('-m', type=str)  # mode: ('train', 'eval)
+    parser.add_argument('-f', type=str)  # filename: model filename
+    parser.add_argument('-r', type=str)  # render: ('human', 'video')
+    parser.add_argument('-s', type=int)  # steps: number of steps to run
     args = parser.parse_args()
 
     # set pytorch num threads and device
