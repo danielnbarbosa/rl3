@@ -59,6 +59,7 @@ if DEVICE == 'cpu':
     SHOW_PROGRESS_EVERY = 1  # how often (in episodes) to show training results
     SAVE_MODEL_EVERY = 100  # how often (in episodes) to save intermediate models
     MOVING_AVERAGE = 100  # moving average window to use when printing intermediate results to console
+    EVAL_MODEL_EVERY = 10_000  # how often (in steps) to evaluate the model
 
 # GPU Config
 elif DEVICE == 'cuda':
@@ -82,6 +83,7 @@ elif DEVICE == 'cuda':
     SHOW_PROGRESS_EVERY = 1  # how often (in episodes) to show training results
     SAVE_MODEL_EVERY = 1000  # how often (in episodes) to save intermediate models
     MOVING_AVERAGE = 100  # moving average window to use when printing intermediate results to console
+    EVAL_MODEL_EVERY = 250_000  # how often (in steps) to evaluate the model
 
 
 class SkipFrame(gym.Wrapper):
@@ -343,7 +345,8 @@ class Agent:
         rewards = []  # total reward per episode
         train_steps = 0  # number of steps taken over entire training run
         n = 0  # episode count
-        total_run_time = 0
+        total_run_time = 0  # total time training
+        eval_reward = 0  # average reward achieved during evaluation
         writer = SummaryWriter(log_dir=runs_path)
 
         while train_steps <= TRAIN_STEPS_MAX:
@@ -395,6 +398,10 @@ class Agent:
                     logging.debug('Syncing target model')
                     self.target_model.load_state_dict(self.model.state_dict())  # copy weights to target model
 
+                # evaluate
+                if (train_steps % EVAL_MODEL_EVERY == 0) and (train_steps != 0):
+                    eval_reward = self.eval(episodes=100, epsilon=0.01, filename=args.f)
+
                 episode_reward += reward  # accumulate reward
                 episode_steps += 1  # increment episode step count
                 train_steps += 1  # increment training run step count
@@ -420,6 +427,7 @@ class Agent:
             writer.add_scalar("Episode environment time", (episode_environment_time), n)
             writer.add_scalar("Episode learn time", (episode_learn_time), n)
             writer.add_scalar("Episode run time", episode_run_time, n)
+            writer.add_scalar("Eval Reward", eval_reward, n)
 
             # show and save intermediate results
             if (n % SHOW_PROGRESS_EVERY == 0):
@@ -441,7 +449,8 @@ class Agent:
 
     def eval(self, episodes=10, epsilon=0.01, filename=None, render=False):
         'Evaluate trained agent.'
-        self.model.load_state_dict(torch.load(f'{filename}', map_location=torch.device('cpu')))
+        if filename:
+            self.model.load_state_dict(torch.load(f'{filename}', map_location=torch.device('cpu')))
 
         rewards = []  # total reward per episode
         for n in range(episodes):
@@ -464,8 +473,10 @@ class Agent:
             #if render == 'video':
             #    self.env.close_video_recorder()
             print(f'Agent ran for {episode_steps} steps, received {round(episode_reward, 2)} reward.  RunTime: {round(t1 - t0)}s')
+        mean_reward = np.mean(rewards)
         print()
-        print(f'Average Episode Reward across {episodes} episodes: {np.mean(rewards)}')
+        print(f'Average Episode Reward across {episodes} episodes: {mean_reward}')
+        return mean_reward
 
 
 def moving_average(a, n=MOVING_AVERAGE):
