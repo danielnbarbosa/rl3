@@ -1,7 +1,7 @@
 '''
 DQN for learning from pixels.
 CNN.
-Converts RGB observation to cropped, grayscale stack of frames.
+Converts RGB observation to scaled, grayscale stack of frames.
 Replay memory.
 Fixed Q targets with target network.
 Dueling networks.
@@ -397,10 +397,10 @@ class Agent:
 
                 episode_reward += reward  # accumulate reward
                 episode_steps += 1  # increment episode step count
+                train_steps += 1  # increment training run step count
                 state = next_state  # move to next state
                 eps = EPS_START - ((EPS_START - EPS_MIN) / EPS_DECAY_STEPS) * train_steps  # decay epsilon
                 eps = max(EPS_MIN, eps)
-            train_steps += episode_steps  # increment training run step count
             rewards.append(episode_reward)
             smoothed_rewards = moving_average(rewards)
             t1 = time.time()
@@ -529,7 +529,7 @@ if __name__ == '__main__':
             print(f'Videos path: {eval_videos_path}')
             env = gym.wrappers.record_video.RecordVideo(env, eval_videos_path)
         agent = Agent(env)
-        agent.eval(episodes=10, epsilon=0.01, filename=args.f)
+        agent.eval(episodes=100, epsilon=0.01, filename=args.f)
         env.close()
 
     if args.m == 'train':

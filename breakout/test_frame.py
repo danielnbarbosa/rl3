@@ -74,17 +74,12 @@ def act_randomly(env):
     state = env.reset()
     states.append(state)
 
-    i = 0
-    while not done:
+    for i in range(500):
         action = env.action_space.sample()
         state, reward, done, info = env.step(action)  # step the environment
-        if info['lives'] < 5:
-            done = True
-            idx = i
         print(i, reward, done, info)
         states.append(state)
-        i += 1
-    return states, idx
+    return states
 
 
 # MAIN
