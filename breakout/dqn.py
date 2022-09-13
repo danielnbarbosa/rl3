@@ -50,7 +50,7 @@ if DEVICE == 'cpu':
     FRAMES = 4  # number of observations to stack together to form the state
     FRAMESKIP = 4  # number of frames to repeat the same actions
 
-    LR = 0.00025  # learning rate
+    LR = 0.00001  # learning rate
     GAMMA = 0.99  # discount rate
     EPS_START = 1  # starting value of epsilon
     EPS_MIN = .1  # minimum value for epsilon
@@ -74,7 +74,7 @@ elif DEVICE == 'cuda':
     FRAMES = 4  # number of observations to stack together to form the state
     FRAMESKIP = 4  # number of frames to repeat the same actions
 
-    LR = 0.00025  # learning rate
+    LR = 0.00001  # learning rate
     GAMMA = 0.99  # discount rate
     EPS_START = 1  # starting value of epsilon
     EPS_MIN = .1  # minimum value for epsilon
