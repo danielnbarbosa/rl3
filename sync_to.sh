@@ -16,4 +16,4 @@ scp $DIR/train.sh $DIR/install_deps.sh $DIR/$ENV/dqn.py ${USER_IP}:
 # ./train.sh &
 # now safe to disconnect SSH connection
 # monitor: `tail -f train-summary.log`
-# stop training: `pgrep -f train`
+# stop training: `pkill -f train`

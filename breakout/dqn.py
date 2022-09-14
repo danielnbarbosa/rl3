@@ -50,7 +50,7 @@ if DEVICE == 'cpu':
     FRAMES = 4  # number of observations to stack together to form the state
     FRAMESKIP = 4  # number of frames to repeat the same actions
 
-    LR = 0.00001  # learning rate
+    LR = 0.0000625  # learning rate
     GAMMA = 0.99  # discount rate
     EPS_START = 1  # starting value of epsilon
     EPS_MIN = .1  # minimum value for epsilon
@@ -74,7 +74,7 @@ elif DEVICE == 'cuda':
     FRAMES = 4  # number of observations to stack together to form the state
     FRAMESKIP = 4  # number of frames to repeat the same actions
 
-    LR = 0.00001  # learning rate
+    LR = 0.0000625  # learning rate
     GAMMA = 0.99  # discount rate
     EPS_START = 1  # starting value of epsilon
     EPS_MIN = .1  # minimum value for epsilon
@@ -166,7 +166,7 @@ class Model2Layer(nn.Module):
             nn.Linear(256, outputs)
         )
         # yapf: enable
-        self.optimizer = optim.Adam(self.parameters(), lr=LR, eps=1e-4)
+        self.optimizer = optim.Adam(self.parameters(), lr=LR, eps=1.5e-4)
 
     def forward(self, x):
         assert x.shape == (1, FRAMES, 84, 84) or x.shape == (BATCH_SIZE, FRAMES, 84, 84)
@@ -212,7 +212,7 @@ class Model3Layer(nn.Module):
             nn.Linear(512, outputs)
         )
         # yapf: enable
-        self.optimizer = optim.Adam(self.parameters(), lr=LR, eps=1e-4)
+        self.optimizer = optim.Adam(self.parameters(), lr=LR, eps=1.5e-4)
 
     def forward(self, x):
         assert x.shape == (1, FRAMES, 84, 84) or x.shape == (BATCH_SIZE, FRAMES, 84, 84)
@@ -363,6 +363,7 @@ class Agent:
             eps = EPS_START
             # initialize environment
             state = self.env.reset()
+            lives = 5
             done = False
             while not done:
                 # choose action
@@ -374,15 +375,16 @@ class Agent:
                 # take action
                 t0_env = time.time()
                 next_state, reward, done, info = self.env.step(action)  # step the environment
-                # reward hacking: end the episode when a single life is lost (vs 5 lives)
-                if info['lives'] < 5:
-                    done = True
+                # reward hacking: when a life is lost, save it in replay memory as terminal state
+                if info['lives'] < lives:
+                    self.replay_memory.add(tuple([state, action, reward, next_state, True]))  # add [s, a, r, s'] to replay memory
+                    lives -= 1
+                # otherwise add to replay memory as usual
+                else:
+                    self.replay_memory.add(tuple([state, action, reward, next_state, done]))  # add [s, a, r, s'] to replay memory
                 logging.debug(f'Episode {n}, step {episode_steps}.  Took action {action}, received {round(reward, 2)} reward, done is {done}, info is {info}.')
                 t1_env = time.time()
                 episode_environment_time += (t1_env - t0_env)
-
-                # add to replay memory
-                self.replay_memory.add(tuple([state, action, reward, next_state, done]))  # add [s, a, r, s'] to replay memory
 
                 # learn
                 if (train_steps >= REPLAY_MEMORY_MIN) and (train_steps % LEARN_EVERY == 0):  # once replay memory has accumulated some experience
@@ -400,7 +402,7 @@ class Agent:
 
                 # evaluate
                 if (train_steps % EVAL_MODEL_EVERY == 0) and (train_steps != 0):
-                    eval_reward = self.eval(episodes=100, epsilon=0.0)
+                    eval_reward = self.eval(episodes=100, epsilon=0.01)
 
                 episode_reward += reward  # accumulate reward
                 episode_steps += 1  # increment episode step count
@@ -417,7 +419,8 @@ class Agent:
 
             # log to tensorboard
             writer.add_scalar("Epsilon", eps, train_steps)
-            writer.add_scalar("Reward", episode_reward, train_steps)
+            writer.add_scalar("Reward Train", episode_reward, train_steps)
+            writer.add_scalar("Reward Eval", eval_reward, train_steps)
             writer.add_scalar("Loss", episode_loss, train_steps)
             writer.add_scalar("Replay memory used", len(self.replay_memory), train_steps)
             writer.add_scalar("Steps per second", steps_per_second, train_steps)
@@ -427,7 +430,6 @@ class Agent:
             writer.add_scalar("Episode environment time", (episode_environment_time), n)
             writer.add_scalar("Episode learn time", (episode_learn_time), n)
             writer.add_scalar("Episode run time", episode_run_time, n)
-            writer.add_scalar("Eval Reward", eval_reward, n)
 
             # show and save intermediate results
             if (n % SHOW_PROGRESS_EVERY == 0):
@@ -459,20 +461,10 @@ class Agent:
             done = False
             episode_reward = 0
             episode_steps = 0
-            lives = 5
-            info = {'lives': 5}
             self.model.eval()
             with torch.no_grad():
                 while not done:
-                    # after starting an episode or losing a life, do FIRE as first action to get the ball moving
-                    # needed due to reward hacking during training where episode ends after first loss of life
-                    if episode_steps == 0:
-                        action = 1
-                    elif info['lives'] < lives:
-                        action = 1
-                        lives -= 1
-                    else:
-                        action = self._act(state, epsilon)  # take an action using e-greedy policy
+                    action = self._act(state, epsilon)  # take an action using e-greedy policy
                     state, reward, done, info = self.env.step(action)  # step the environment
                     episode_reward += reward  # accumulate reward
                     episode_steps += 1  # increment step count
