@@ -511,11 +511,12 @@ if __name__ == '__main__':
     def evaluate():
         gym.logger.set_level(gym.logger.ERROR)
         if args.r == 'human':
-            env = gym.make(ENV, full_action_space=False, frameskip=1, repeat_action_probability=0.01, render_mode='human')
+            render_mode = 'human'
         elif args.r == 'video':
-            env = gym.make(ENV, full_action_space=False, frameskip=1, repeat_action_probability=0.01, render_mode='rgb_array')
+            render_mode = 'rgb_array'
         else:
-            env = gym.make(ENV, full_action_space=False, frameskip=1, repeat_action_probability=0.01)
+            render_mode = None
+        env = gym.make(ENV, full_action_space=False, frameskip=1, repeat_action_probability=0.01, render_mode=render_mode)
         env = pre_process_env(env)
         if args.s:
             env._max_episode_steps = args.s
