@@ -1,12 +1,7 @@
 '''
 DQN for learning from pixels.
-CNN.
-Converts RGB observation to scaled, grayscale stack of frames.
-Replay memory.
-Fixed Q targets with target network.
-Dueling networks.
-Double DQN.
-Frameskip.
+Converts RGB observation to cropped, scaled, grayscale stack of frames.
+In addition to the vanilla DQN implementation, this also uses dueling networks and double DQN.
 '''
 
 import logging
@@ -23,24 +18,12 @@ import torch.nn as nn
 import torch.optim as optim
 from torchinfo import summary
 from torch.utils.tensorboard import SummaryWriter
-'''
-Hyper parameters from DDQN paper:
-
-TRAIN_STEPS_MAX = 50_000_000
-REPLAY_MEMORY_MIN = 200_000
-REPLAY_MEMORY_SIZE = 1_000_000
-SYNC_TARGET_MODEL_EVERY = 10_000
-EPS_MIN = .1
-EPS_DECAY_STEPS = 1_000_000
-'''
 
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 ENV = 'ALE/Breakout-v5'
 
 # CPU Config
 if DEVICE == 'cpu':
-    PYTORCH_THREADS = None  # might be helpful to set to 8 on M1 so it doesn't use efficency cores
-
     TRAIN_STEPS_MAX = 1_000_000  # train for this many steps, will go a little beyond to finish the current episode
     REPLAY_MEMORY_MIN = 20_000  # minimum amount of accumulated experience before before we begin sampling
     REPLAY_MEMORY_SIZE = 50_000  # max size of replay memory buffer
@@ -61,8 +44,6 @@ if DEVICE == 'cpu':
 
 # GPU Config
 elif DEVICE == 'cuda':
-    PYTORCH_THREADS = None  # might be helpful to set to 8 on M1 so it doesn't use efficency cores
-
     TRAIN_STEPS_MAX = 50_000_000  # train for this many steps, will go a little beyond to finish the current episode
     REPLAY_MEMORY_MIN = 200_000  # minimum amount of accumulated experience before before we begin sampling
     REPLAY_MEMORY_SIZE = 1_000_000  # max size of replay memory buffer
@@ -514,9 +495,7 @@ if __name__ == '__main__':
     parser.add_argument('-s', type=int)  # steps: number of steps to run
     args = parser.parse_args()
 
-    # set pytorch num threads and device
-    if PYTORCH_THREADS:
-        torch.set_num_threads(PYTORCH_THREADS)
+    # show pytorch num threads and device
     print('Pytorch threads:', torch.get_num_threads())
     print('Pytorch device:', DEVICE)
     device = torch.device(DEVICE)
