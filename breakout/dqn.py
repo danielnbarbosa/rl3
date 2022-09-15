@@ -378,7 +378,7 @@ class Agent:
 
                 # evaluate
                 if (train_steps % EVAL_MODEL_EVERY == 0) and (train_steps != 0):
-                    eval_reward = self.eval(episodes=100, epsilon=0.01)
+                    eval_reward = self.eval(episodes=100, epsilon=0.0)
                     # save intermediate models
                     torch.save(self.model.state_dict(), models_path / f'train_steps_{train_steps}.pth')
                     torch.save(self.model.state_dict(), models_path / 'latest.pth')
@@ -526,7 +526,7 @@ if __name__ == '__main__':
             print(f'Videos path: {eval_videos_path}')
             env = gym.wrappers.record_video.RecordVideo(env, eval_videos_path, episode_trigger=lambda x: True)
         agent = Agent(env)
-        agent.eval(episodes=100, epsilon=0.01, filename=args.f)
+        agent.eval(episodes=100, epsilon=0.0, filename=args.f)
         env.close()
 
     if args.m == 'train':
