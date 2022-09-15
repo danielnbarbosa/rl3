@@ -24,11 +24,11 @@ ENV = 'ALE/Breakout-v5'
 
 # CPU Config
 if DEVICE == 'cpu':
-    TRAIN_STEPS_MAX = 1_000_000  # train for this many steps, will go a little beyond to finish the current episode
+    TRAIN_STEPS_MAX = 50_000_000  # train for this many steps, will go a little beyond to finish the current episode
     REPLAY_MEMORY_MIN = 20_000  # minimum amount of accumulated experience before before we begin sampling
-    REPLAY_MEMORY_SIZE = 50_000  # max size of replay memory buffer
+    REPLAY_MEMORY_SIZE = 100_000  # max size of replay memory buffer
     BATCH_SIZE = 32  # number of items to randomly sample from replay memory
-    SYNC_TARGET_MODEL_EVERY = 1000  # how often (in steps) to copy weights to target model
+    SYNC_TARGET_MODEL_EVERY = 10_000  # how often (in steps) to copy weights to target model
     LEARN_EVERY = 4  # update model weights every n steps via gradient descent
     FRAMES = 4  # number of observations to stack together to form the state
     FRAMESKIP = 4  # number of frames to repeat the same actions
@@ -37,10 +37,10 @@ if DEVICE == 'cpu':
     GAMMA = 0.99  # discount rate
     EPS_START = 1  # starting value of epsilon
     EPS_MIN = .1  # minimum value for epsilon
-    EPS_DECAY_STEPS = 50_000  # over how many steps to linearly reduce epsilon until it reaches EPS_MIN
+    EPS_DECAY_STEPS = 1_000_000  # over how many steps to linearly reduce epsilon until it reaches EPS_MIN
 
     MOVING_AVERAGE = 100  # moving average window to use when printing intermediate results to console
-    EVAL_MODEL_EVERY = 10_000  # how often (in steps) to evaluate the model
+    EVAL_MODEL_EVERY = 250_000  # how often (in steps) to evaluate the model
 
 # GPU Config
 elif DEVICE == 'cuda':
