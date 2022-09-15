@@ -363,7 +363,6 @@ class Agent:
             eps = EPS_START
             # initialize environment
             state = self.env.reset()
-            lives = 5
             done = False
             while not done:
                 # choose action
@@ -375,16 +374,15 @@ class Agent:
                 # take action
                 t0_env = time.time()
                 next_state, reward, done, info = self.env.step(action)  # step the environment
-                # reward hacking: when a life is lost, save it in replay memory as terminal state
-                if info['lives'] < lives:
-                    self.replay_memory.add(tuple([state, action, reward, next_state, True]))  # add [s, a, r, s'] to replay memory
-                    lives -= 1
-                # otherwise add to replay memory as usual
-                else:
-                    self.replay_memory.add(tuple([state, action, reward, next_state, done]))  # add [s, a, r, s'] to replay memory
+                # reward hacking: end the episode when a single life is lost (vs 5 lives)
+                if info['lives'] < 5:
+                    done = True
                 logging.debug(f'Episode {n}, step {episode_steps}.  Took action {action}, received {round(reward, 2)} reward, done is {done}, info is {info}.')
                 t1_env = time.time()
                 episode_environment_time += (t1_env - t0_env)
+
+                # add to replay memory
+                self.replay_memory.add(tuple([state, action, reward, next_state, done]))  # add [s, a, r, s'] to replay memory
 
                 # learn
                 if (train_steps >= REPLAY_MEMORY_MIN) and (train_steps % LEARN_EVERY == 0):  # once replay memory has accumulated some experience
@@ -461,10 +459,20 @@ class Agent:
             done = False
             episode_reward = 0
             episode_steps = 0
+            lives = 5
+            info = {'lives': 5}
             self.model.eval()
             with torch.no_grad():
                 while not done:
-                    action = self._act(state, epsilon)  # take an action using e-greedy policy
+                    # after starting an episode or losing a life, do FIRE as first action to get the ball moving
+                    # needed due to reward hacking during training where episode ends after first loss of life
+                    if episode_steps == 0:
+                        action = 1
+                    elif info['lives'] < lives:
+                        action = 1
+                        lives -= 1
+                    else:
+                        action = self._act(state, epsilon)  # take an action using e-greedy policy
                     state, reward, done, info = self.env.step(action)  # step the environment
                     episode_reward += reward  # accumulate reward
                     episode_steps += 1  # increment step count
@@ -490,8 +498,9 @@ def moving_average(a, n=MOVING_AVERAGE):
 def pre_process_env(env):
     env = NoopResetEnv(env)
     env = SkipFrame(env, skip=FRAMESKIP)
-    env = gym.wrappers.gray_scale_observation.GrayScaleObservation(env)
-    env = gym.wrappers.resize_observation.ResizeObservation(env, 84)
+    env = gym.wrappers.transform_observation.TransformObservation(env, lambda obs: obs[30:195, :, :])  # crop
+    env = gym.wrappers.gray_scale_observation.GrayScaleObservation(env)  # convert to grayscale
+    env = gym.wrappers.resize_observation.ResizeObservation(env, 84)  # resize to (84,84)
     env = gym.wrappers.frame_stack.FrameStack(env, FRAMES)
     return env
 
