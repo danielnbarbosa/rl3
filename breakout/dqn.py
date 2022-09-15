@@ -50,7 +50,7 @@ if DEVICE == 'cpu':
     FRAMES = 4  # number of observations to stack together to form the state
     FRAMESKIP = 4  # number of frames to repeat the same actions
 
-    LR = 0.0000625  # learning rate
+    LR = 0.00025  # learning rate
     GAMMA = 0.99  # discount rate
     EPS_START = 1  # starting value of epsilon
     EPS_MIN = .1  # minimum value for epsilon
@@ -74,7 +74,7 @@ elif DEVICE == 'cuda':
     FRAMES = 4  # number of observations to stack together to form the state
     FRAMESKIP = 4  # number of frames to repeat the same actions
 
-    LR = 0.0000625  # learning rate
+    LR = 0.00025  # learning rate
     GAMMA = 0.99  # discount rate
     EPS_START = 1  # starting value of epsilon
     EPS_MIN = .1  # minimum value for epsilon
@@ -166,7 +166,7 @@ class Model2Layer(nn.Module):
             nn.Linear(256, outputs)
         )
         # yapf: enable
-        self.optimizer = optim.Adam(self.parameters(), lr=LR, eps=1.5e-4)
+        self.optimizer = optim.Adam(self.parameters(), lr=LR, eps=1e-4)
 
     def forward(self, x):
         assert x.shape == (1, FRAMES, 84, 84) or x.shape == (BATCH_SIZE, FRAMES, 84, 84)
@@ -212,7 +212,7 @@ class Model3Layer(nn.Module):
             nn.Linear(512, outputs)
         )
         # yapf: enable
-        self.optimizer = optim.Adam(self.parameters(), lr=LR, eps=1.5e-4)
+        self.optimizer = optim.Adam(self.parameters(), lr=LR, eps=1e-4)
 
     def forward(self, x):
         assert x.shape == (1, FRAMES, 84, 84) or x.shape == (BATCH_SIZE, FRAMES, 84, 84)
@@ -538,7 +538,7 @@ if __name__ == '__main__':
             print(f'Videos path: {eval_videos_path}')
             env = gym.wrappers.record_video.RecordVideo(env, eval_videos_path, episode_trigger=lambda x: True)
         agent = Agent(env)
-        agent.eval(episodes=100, epsilon=0.0, filename=args.f)
+        agent.eval(episodes=100, epsilon=0.01, filename=args.f)
         env.close()
 
     if args.m == 'train':

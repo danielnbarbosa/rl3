@@ -62,6 +62,7 @@ class NoopResetEnv(gym.Wrapper):
 def pre_process_env(env):
     env = NoopResetEnv(env)
     env = SkipFrame(env, skip=FRAMESKIP)
+    #env = gym.wrappers.transform_observation.TransformObservation(env, lambda obs: obs[30:195, :, :])
     env = gym.wrappers.gray_scale_observation.GrayScaleObservation(env)
     env = gym.wrappers.resize_observation.ResizeObservation(env, 84)
     env = gym.wrappers.frame_stack.FrameStack(env, FRAMES)
@@ -74,7 +75,7 @@ def act_randomly(env):
     state = env.reset()
     states.append(state)
 
-    for i in range(500):
+    for i in range(50):
         action = env.action_space.sample()
         state, reward, done, info = env.step(action)  # step the environment
         print(i, reward, done, info)
@@ -82,24 +83,31 @@ def act_randomly(env):
     return states
 
 
+def plot_4_frames(state):
+    fig, axs = plt.subplots(ncols=2, nrows=2, figsize=(5.5, 3.5), constrained_layout=True)
+    axs[0, 0].imshow(state[0], cmap='gray')
+    axs[0, 1].imshow(state[1], cmap='gray')
+    axs[1, 0].imshow(state[2], cmap='gray')
+    axs[1, 1].imshow(state[3], cmap='gray')
+    fig.suptitle('4 frames')
+    plt.show()
+
+
 # MAIN
 ENV = 'ALE/Breakout-v5'
 env = gym.make(ENV, full_action_space=False, frameskip=1, repeat_action_probability=0.01)
 env = pre_process_env(env)
 
-states, idx = act_randomly(env)
+states = act_randomly(env)
 print(len(states))
-print(idx)
-#idx = 20
+idx = 20
 state = states[idx]
 
-fig, axs = plt.subplots(ncols=2, nrows=2, figsize=(5.5, 3.5), constrained_layout=True)
-axs[0, 0].imshow(state[0], cmap='gray')
-axs[0, 1].imshow(state[1], cmap='gray')
-axs[1, 0].imshow(state[2], cmap='gray')
-axs[1, 1].imshow(state[3], cmap='gray')
-fig.suptitle('4 frames')
-plt.show()
+#state = state[30:195, :, :]
+#print(state.shape)
+#plt.imshow(state)
+#plt.show()
+plot_4_frames(state)
 
 #plt.imshow(state_gray)
 #plt.imshow(crop(state))
