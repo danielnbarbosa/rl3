@@ -32,14 +32,11 @@ if DEVICE == 'cpu':
     LEARN_EVERY = 4  # update model weights every n steps via gradient descent
     FRAMES = 4  # number of observations to stack together to form the state
     FRAMESKIP = 4  # number of frames to repeat the same actions
-
     LR = 0.00025  # learning rate
     GAMMA = 0.99  # discount rate
     EPS_START = 1  # starting value of epsilon
     EPS_MIN = .1  # minimum value for epsilon
     EPS_DECAY_STEPS = 1_000_000  # over how many steps to linearly reduce epsilon until it reaches EPS_MIN
-
-    MOVING_AVERAGE = 100  # moving average window to use when printing intermediate results to console
     EVAL_MODEL_EVERY = 250_000  # how often (in steps) to evaluate the model
 
 # GPU Config
@@ -52,14 +49,11 @@ elif DEVICE == 'cuda':
     LEARN_EVERY = 4  # update model weights every n steps via gradient descent
     FRAMES = 4  # number of observations to stack together to form the state
     FRAMESKIP = 4  # number of frames to repeat the same actions
-
     LR = 0.00025  # learning rate
     GAMMA = 0.99  # discount rate
     EPS_START = 1  # starting value of epsilon
     EPS_MIN = .1  # minimum value for epsilon
     EPS_DECAY_STEPS = 1_000_000  # over how many steps to linearly reduce epsilon until it reaches EPS_MIN
-
-    MOVING_AVERAGE = 100  # moving average window to use when printing intermediate results to console
     EVAL_MODEL_EVERY = 250_000  # how often (in steps) to evaluate the model
 
 
@@ -319,7 +313,6 @@ class Agent:
         logging.basicConfig(filename=training_run_path / 'train.log', format='%(asctime)s %(levelname)-8s %(message)s', level=logging.ERROR, datefmt='%Y-%m-%d %H:%M:%S')
         print(f'Path: {training_run_path}')
 
-        rewards = []  # total reward per episode
         train_steps = 0  # number of steps taken over entire training run
         n = 0  # episode count
         total_run_time = 0  # total time training
@@ -395,8 +388,6 @@ class Agent:
                 state = next_state  # move to next state
                 eps = EPS_START - ((EPS_START - EPS_MIN) / EPS_DECAY_STEPS) * train_steps  # decay epsilon
                 eps = max(EPS_MIN, eps)
-            rewards.append(episode_reward)
-            smoothed_rewards = moving_average(rewards)
             t1 = time.time()
             episode_run_time = t1 - t0
             total_run_time += episode_run_time
@@ -418,7 +409,7 @@ class Agent:
 
             # show intermediate results
             print(
-                f'Ep: {n}\tAvgR: {round(smoothed_rewards[-1], 2)}\tBestAvgR: {round(np.max(smoothed_rewards), 2)}\tEps: {round(eps, 4)}\tRepBuf: {len(self.replay_memory)}\tSteps:{episode_steps}\tTotSteps: {train_steps}\tRunTime: {round(episode_run_time)}s ({round(episode_act_time)}/{round(episode_environment_time)}/{round(episode_learn_time)})\tTotRunTime: {round(total_run_time)}s\tSteps/s: {round(steps_per_second)}\tEvalR: {eval_reward}'
+                f'Ep: {n}\tReward: {episode_reward}\tEps: {round(eps, 4)}\tBufLen: {len(self.replay_memory)}\tSteps:{episode_steps}\tTotSteps: {train_steps}\tRunTime: {round(episode_run_time)}s ({round(episode_act_time)}/{round(episode_environment_time)}/{round(episode_learn_time)})\tTotRunTime: {round(total_run_time)}s\tSteps/s: {round(steps_per_second)}\tEvalReward: {eval_reward}'
             )
         # save final model
         torch.save(self.model.state_dict(), models_path / 'final.pth')
@@ -463,16 +454,6 @@ class Agent:
         print()
         print(f'Average episode reward across {episodes} episodes: {mean_reward}.  Best reward: {max(rewards)}')
         return mean_reward
-
-
-def moving_average(a, n=MOVING_AVERAGE):
-    # don't return results until we've collected enough data
-    if len(a) < n:
-        return [-np.inf]
-    else:
-        ret = np.cumsum(a, dtype=float)
-        ret[n:] = ret[n:] - ret[:-n]
-        return ret[n - 1:] / n
 
 
 def pre_process_env(env):
