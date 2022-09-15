@@ -56,8 +56,6 @@ if DEVICE == 'cpu':
     EPS_MIN = .1  # minimum value for epsilon
     EPS_DECAY_STEPS = 50_000  # over how many steps to linearly reduce epsilon until it reaches EPS_MIN
 
-    SHOW_PROGRESS_EVERY = 1  # how often (in episodes) to show training results
-    SAVE_MODEL_EVERY = 100  # how often (in episodes) to save intermediate models
     MOVING_AVERAGE = 100  # moving average window to use when printing intermediate results to console
     EVAL_MODEL_EVERY = 10_000  # how often (in steps) to evaluate the model
 
@@ -80,8 +78,6 @@ elif DEVICE == 'cuda':
     EPS_MIN = .1  # minimum value for epsilon
     EPS_DECAY_STEPS = 1_000_000  # over how many steps to linearly reduce epsilon until it reaches EPS_MIN
 
-    SHOW_PROGRESS_EVERY = 1  # how often (in episodes) to show training results
-    SAVE_MODEL_EVERY = 1000  # how often (in episodes) to save intermediate models
     MOVING_AVERAGE = 100  # moving average window to use when printing intermediate results to console
     EVAL_MODEL_EVERY = 250_000  # how often (in steps) to evaluate the model
 
@@ -347,6 +343,7 @@ class Agent:
         n = 0  # episode count
         total_run_time = 0  # total time training
         eval_reward = 0  # average reward achieved during evaluation
+        best_eval_reward = 0
         writer = SummaryWriter(log_dir=runs_path)
 
         while train_steps <= TRAIN_STEPS_MAX:
@@ -401,6 +398,15 @@ class Agent:
                 # evaluate
                 if (train_steps % EVAL_MODEL_EVERY == 0) and (train_steps != 0):
                     eval_reward = self.eval(episodes=100, epsilon=0.01)
+                    # save intermediate models
+                    torch.save(self.model.state_dict(), models_path / f'train_steps_{train_steps}.pth')
+                    torch.save(self.model.state_dict(), models_path / 'latest.pth')
+                    with open(models_path / 'latest.pkl', 'wb') as file:
+                        pickle.dump(self.replay_memory, file)
+                    if eval_reward > best_eval_reward:
+                        print(f'Saving new best model with eval_reward of {eval_reward}')
+                        torch.save(self.model.state_dict(), models_path / 'best.pth')
+                        best_eval_reward = eval_reward
 
                 episode_reward += reward  # accumulate reward
                 episode_steps += 1  # increment episode step count
@@ -429,18 +435,11 @@ class Agent:
             writer.add_scalar("Episode learn time", (episode_learn_time), n)
             writer.add_scalar("Episode run time", episode_run_time, n)
 
-            # show and save intermediate results
-            if (n % SHOW_PROGRESS_EVERY == 0):
-                print(
-                    f'Ep: {n}\tAvgR: {round(smoothed_rewards[-1], 2)}\tBestAvgR: {round(np.max(smoothed_rewards), 2)}\tEps: {round(eps, 4)}\tRepBuf: {len(self.replay_memory)}\tSteps:{episode_steps}\tTotSteps: {train_steps}\tRunTime: {round(episode_run_time)}s ({round(episode_act_time)}/{round(episode_environment_time)}/{round(episode_learn_time)})\tTotRunTime: {round(total_run_time)}s\tSteps/s: {round(steps_per_second)}\tEvalR: {eval_reward}'
-                )
-            if n % SAVE_MODEL_EVERY == 0:
-                torch.save(self.model.state_dict(), models_path / f'episode_{n}.pth')
-                torch.save(self.model.state_dict(), models_path / 'latest.pth')
-                with open(models_path / 'latest.pkl', 'wb') as file:
-                    pickle.dump(self.replay_memory, file)
-            if episode_reward >= max(rewards):
-                torch.save(self.model.state_dict(), models_path / 'best.pth')
+            # show intermediate results
+            print(
+                f'Ep: {n}\tAvgR: {round(smoothed_rewards[-1], 2)}\tBestAvgR: {round(np.max(smoothed_rewards), 2)}\tEps: {round(eps, 4)}\tRepBuf: {len(self.replay_memory)}\tSteps:{episode_steps}\tTotSteps: {train_steps}\tRunTime: {round(episode_run_time)}s ({round(episode_act_time)}/{round(episode_environment_time)}/{round(episode_learn_time)})\tTotRunTime: {round(total_run_time)}s\tSteps/s: {round(steps_per_second)}\tEvalR: {eval_reward}'
+            )
+        # save final model
         torch.save(self.model.state_dict(), models_path / 'final.pth')
         with open(models_path / 'final.pkl', 'wb') as file:
             pickle.dump(self.replay_memory, file)
