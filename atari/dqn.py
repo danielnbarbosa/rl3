@@ -20,11 +20,11 @@ from torchinfo import summary
 from torch.utils.tensorboard import SummaryWriter
 
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
-ENV = 'ALE/Breakout-v5'
+ENV = 'ALE/Pong-v5'
 
 # CPU Config
 if DEVICE == 'cpu':
-    TRAIN_STEPS_MAX = 50_000_000  # train for this many steps, will go a little beyond to finish the current episode
+    TRAIN_STEPS_MAX = 5_000_000  # train for this many steps, will go a little beyond to finish the current episode
     REPLAY_MEMORY_MIN = 20_000  # minimum amount of accumulated experience before before we begin sampling
     REPLAY_MEMORY_SIZE = 100_000  # max size of replay memory buffer
     BATCH_SIZE = 32  # number of items to randomly sample from replay memory
@@ -345,9 +345,6 @@ class Agent:
                 # take action
                 t0_env = time.time()
                 next_state, reward, done, info = self.env.step(action)  # step the environment
-                # reward hacking: end the episode when a single life is lost (vs 5 lives)
-                if info['lives'] < 5:
-                    done = True
                 logging.debug(f'Episode {n}, step {episode_steps}.  Took action {action}, received {round(reward, 2)} reward, done is {done}, info is {info}.')
                 t1_env = time.time()
                 episode_environment_time += (t1_env - t0_env)
@@ -371,7 +368,7 @@ class Agent:
 
                 # evaluate
                 if (train_steps % EVAL_MODEL_EVERY == 0) and (train_steps != 0):
-                    eval_reward = self.eval(episodes=100, epsilon=0.0)
+                    eval_reward = self.eval(episodes=30, epsilon=0.0)
                     # save intermediate models
                     torch.save(self.model.state_dict(), models_path / f'train_steps_{train_steps}.pth')
                     torch.save(self.model.state_dict(), models_path / 'latest.pth')
@@ -435,15 +432,7 @@ class Agent:
             self.model.eval()
             with torch.no_grad():
                 while not done:
-                    # after starting an episode or losing a life, do FIRE as first action to get the ball moving
-                    # needed due to reward hacking during training where episode ends after first loss of life
-                    if episode_steps == 0:
-                        action = 1
-                    elif info['lives'] < lives:
-                        action = 1
-                        lives -= 1
-                    else:
-                        action = self._act(state, epsilon)  # take an action using e-greedy policy
+                    action = self._act(state, epsilon)  # take an action using e-greedy policy
                     state, reward, done, info = self.env.step(action)  # step the environment
                     episode_reward += reward  # accumulate reward
                     episode_steps += 1  # increment step count
@@ -507,7 +496,7 @@ if __name__ == '__main__':
             print(f'Videos path: {eval_videos_path}')
             env = gym.wrappers.record_video.RecordVideo(env, eval_videos_path, episode_trigger=lambda x: True)
         agent = Agent(env)
-        agent.eval(episodes=100, epsilon=0.0, filename=args.f)
+        agent.eval(episodes=30, epsilon=0.0, filename=args.f)
         env.close()
 
     if args.m == 'train':
