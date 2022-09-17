@@ -17,3 +17,5 @@ scp $DIR/*.sh $DIR/$ENV/*.py ${USER_IP}:
 # ./train.sh &
 # now safe to disconnect SSH connection
 # ./watch.sh  # to monitor logs
+
+# to stop training: `pkill -f train`

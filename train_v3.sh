@@ -4,8 +4,8 @@
 
 # lambda
 if [ $(whoami) == "ubuntu" ]
-    then stdbuf -oL python -u dqn.py -m train | tee train-summary.log
+    then stdbuf -oL python -u dqn_v3.py -m train | tee train-summary.log
 # paperspace
 elif [ $(whoami) == "paperspace" ]
-    then stdbuf -oL python3 -u dqn.py -m train | tee train-summary.log
+    then stdbuf -oL python3 -u dqn_v3.py -m train | tee train-summary.log
 fi
