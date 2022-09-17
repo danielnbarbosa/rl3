@@ -20,7 +20,8 @@ from torchinfo import summary
 from torch.utils.tensorboard import SummaryWriter
 
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
-ENV = 'ALE/Pong-v5'
+#ENV = 'ALE/Pong-v5'
+ENV = 'ALE/Freeway-v5'
 
 # CPU Config
 if DEVICE == 'cpu':

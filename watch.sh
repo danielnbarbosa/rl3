@@ -1,4 +1,4 @@
 #!/bin/bash
-#tail training console log
+# watch agent play using latest model
 
-tail -f train-summary.log
+python dqn.py -m eval -f $(cat current_training_run)/models/latest.pth -r human

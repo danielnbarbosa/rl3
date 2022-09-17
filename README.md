@@ -8,7 +8,7 @@ ssh <USER@IP>
 ./install_deps.sh
 ./train.sh &
 # now safe to disconnect SSH connection
-./watch.sh  # to monitor logs
+./tail.sh  # to monitor logs
 # back on local machine
 ./set.sh <training_run_path>
 ../sync_from.sh <USER@IP>  # to download models and metrics
