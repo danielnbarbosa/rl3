@@ -434,14 +434,15 @@ def eval_agent(filename, episodes=30, epsilon=0.0, render_mode=None):
     gym.logger.set_level(gym.logger.ERROR)
     env = gym.make(ENV, full_action_space=False, frameskip=1, repeat_action_probability=0.25, render_mode=render_mode)
     env = pre_process_env(env)
-    agent = Agent(env)
-    agent.model.load_state_dict(torch.load(f'{filename}', map_location=torch.device('cpu')))
 
     if render_mode == 'rgb_array':
         # create save paths
         eval_videos_path = Path('eval_videos/' + str(datetime.now()).replace(' ', '-'))  # unique folder per eval run
         print(f'Videos path: {eval_videos_path}')
         env = gym.wrappers.record_video.RecordVideo(env, eval_videos_path, episode_trigger=lambda x: True)
+
+    agent = Agent(env)
+    agent.model.load_state_dict(torch.load(f'{filename}', map_location=torch.device('cpu')))
 
     rewards = []  # total reward per episode
     for n in range(episodes):
