@@ -406,7 +406,7 @@ class Agent:
 
             # show intermediate results
             print(
-                f'Ep: {n}\tReward: {episode_reward}\tEps: {round(eps, 4)}\tBufLen: {len(self.replay_memory)}\tSteps:{episode_steps}\tTotSteps: {train_steps}\tRunTime: {round(episode_run_time)}s ({round(episode_act_time)}/{round(episode_environment_time)}/{round(episode_learn_time)})\tTotRunTime: {round(total_run_time)}s\tSteps/s: {round(steps_per_second)}\tEvalReward: {eval_reward}'
+                f'Ep: {n}\tReward: {episode_reward}\tEps: {round(eps, 4)}\tBufLen: {len(self.replay_memory)}\tSteps:{episode_steps}\tTotSteps: {train_steps}\tRunTime: {round(episode_run_time)}s ({round(episode_act_time)}/{round(episode_environment_time)}/{round(episode_learn_time)})\tTotRunTime: {round(total_run_time)}s\tSteps/s: {round(steps_per_second)}\tEvalReward: {round(eval_reward, 2)}'
             )
         # save final model
         torch.save(self.model.state_dict(), models_path / 'final.pth')
@@ -427,8 +427,6 @@ class Agent:
             done = False
             episode_reward = 0
             episode_steps = 0
-            lives = 5
-            info = {'lives': 5}
             self.model.eval()
             with torch.no_grad():
                 while not done:
