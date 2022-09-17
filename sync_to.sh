@@ -7,9 +7,10 @@
 
 USER_IP=$1
 DIR="/Users/daniel/src/rl3/"
-ENV="breakout"
+ENV=$(basename "$(pwd)")
 
-scp $DIR/train.sh $DIR/install_deps.sh $DIR/$ENV/dqn.py ${USER_IP}:
+echo "Syncing $ENV"
+scp $DIR/train*.sh $DIR/install_deps.sh $DIR/$ENV/dqn*.py ${USER_IP}:
 
 # on cloud instance:
 # ./install_deps.sh

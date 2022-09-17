@@ -7,7 +7,7 @@
 
 USER_IP=$1
 REMOTE_DIR=$2
-ENV="breakout"
+ENV=$(basename "$(pwd)")
 LOCAL_DIR="/Users/daniel/src/rl3/$ENV/training_runs/"
 #LOCAL_DIR="/Users/daniel/src/github/danielnbarbosa/rl3/$ENV/training_runs"
 
