@@ -10,11 +10,10 @@ DIR="/Users/daniel/src/rl3/"
 ENV=$(basename "$(pwd)")
 
 echo "Syncing $ENV"
-scp $DIR/train*.sh $DIR/install_deps.sh $DIR/$ENV/dqn*.py ${USER_IP}:
+scp $DIR/*.sh $DIR/$ENV/*.py ${USER_IP}:
 
 # on cloud instance:
 # ./install_deps.sh
 # ./train.sh &
 # now safe to disconnect SSH connection
-# monitor: `tail -f train-summary.log`
-# stop training: `pkill -f train`
+# ./watch.sh  # to monitor logs

@@ -24,32 +24,26 @@ ENV = 'ALE/Pong-v5'
 
 # CPU Config
 if DEVICE == 'cpu':
-    PYTORCH_THREADS = None  # might be helpful to set to 8 on M1 so it doesn't use efficency cores
-
-    TRAIN_STEPS_MAX = 1_000_000  # train for this many steps, will go a little beyond to finish the current episode
+    TRAIN_STEPS_MAX = 5_000_000  # train for this many steps, will go a little beyond to finish the current episode
     REPLAY_MEMORY_MIN = 20_000  # minimum amount of accumulated experience before before we begin sampling
-    REPLAY_MEMORY_SIZE = 50_000  # max size of replay memory buffer
+    REPLAY_MEMORY_SIZE = 100_000  # max size of replay memory buffer
     BATCH_SIZE = 32  # number of items to randomly sample from replay memory
-    SYNC_TARGET_MODEL_EVERY = 1000  # how often (in steps) to copy weights to target model
+    SYNC_TARGET_MODEL_EVERY = 10_000  # how often (in steps) to copy weights to target model
     LEARN_EVERY = 4  # update model weights every n steps via gradient descent
     FRAMES = 4  # number of observations to stack together to form the state
     FRAMESKIP = 4  # number of frames to repeat the same actions
-
     LR = 0.00025  # learning rate
     GAMMA = 0.99  # discount rate
     EPS_START = 1  # starting value of epsilon
     EPS_MIN = .1  # minimum value for epsilon
-    EPS_DECAY_STEPS = 50_000  # over how many steps to linearly reduce epsilon until it reaches EPS_MIN
-
+    EPS_DECAY_STEPS = 1_000_000  # over how many steps to linearly reduce epsilon until it reaches EPS_MIN
     SHOW_PROGRESS_EVERY = 1  # how often (in episodes) to show training results
     SAVE_MODEL_EVERY = 100  # how often (in episodes) to save intermediate models
     MOVING_AVERAGE = 100  # moving average window to use when printing intermediate results to console
 
 # GPU Config
 elif DEVICE == 'cuda':
-    PYTORCH_THREADS = None  # might be helpful to set to 8 on M1 so it doesn't use efficency cores
-
-    TRAIN_STEPS_MAX = 10_000_000  # train for this many steps, will go a little beyond to finish the current episode
+    TRAIN_STEPS_MAX = 50_000_000  # train for this many steps, will go a little beyond to finish the current episode
     REPLAY_MEMORY_MIN = 200_000  # minimum amount of accumulated experience before before we begin sampling
     REPLAY_MEMORY_SIZE = 1_000_000  # max size of replay memory buffer
     BATCH_SIZE = 32  # number of items to randomly sample from replay memory
@@ -57,13 +51,11 @@ elif DEVICE == 'cuda':
     LEARN_EVERY = 4  # update model weights every n steps via gradient descent
     FRAMES = 4  # number of observations to stack together to form the state
     FRAMESKIP = 4  # number of frames to repeat the same actions
-
     LR = 0.00025  # learning rate
     GAMMA = 0.99  # discount rate
     EPS_START = 1  # starting value of epsilon
     EPS_MIN = .1  # minimum value for epsilon
     EPS_DECAY_STEPS = 1_000_000  # over how many steps to linearly reduce epsilon until it reaches EPS_MIN
-
     SHOW_PROGRESS_EVERY = 1  # how often (in episodes) to show training results
     SAVE_MODEL_EVERY = 1000  # how often (in episodes) to save intermediate models
     MOVING_AVERAGE = 100  # moving average window to use when printing intermediate results to console
@@ -321,13 +313,14 @@ class Agent:
         models_path = training_run_path / 'models'  # models
         models_path.mkdir()
         runs_path = training_run_path / 'runs'  # tensorboard logging
-        logging.basicConfig(filename=training_run_path / 'train.log', format='%(asctime)s %(levelname)-8s %(message)s', level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
+        # set level to logging.DEBUG to enable debug logging, set to logging.ERROR to disable
+        logging.basicConfig(filename=training_run_path / 'train.log', format='%(asctime)s %(levelname)-8s %(message)s', level=logging.ERROR, datefmt='%Y-%m-%d %H:%M:%S')
         print(f'Path: {training_run_path}')
 
         rewards = []  # total reward per episode
         train_steps = 0  # number of steps taken over entire training run
         n = 0  # episode count
-        total_run_time = 0
+        total_run_time = 0  # total time training
         writer = SummaryWriter(log_dir=runs_path)
 
         while train_steps <= TRAIN_STEPS_MAX:
@@ -379,7 +372,7 @@ class Agent:
 
                 episode_reward += reward  # accumulate reward
                 episode_steps += 1  # increment episode step count
-                train_steps += 1  # increment training step count
+                train_steps += 1  # increment training run step count
                 state = next_state  # move to next state
                 eps = EPS_START - ((EPS_START - EPS_MIN) / EPS_DECAY_STEPS) * train_steps  # decay epsilon
                 eps = max(EPS_MIN, eps)
@@ -474,15 +467,13 @@ if __name__ == '__main__':
 
     # parse command line args
     parser = argparse.ArgumentParser()
-    parser.add_argument('-m', type=str)  # --mode: ('train', 'eval)
-    parser.add_argument('-f', type=str)  # --filename: model filename
-    parser.add_argument('-r', type=str)  # --render: ('human', 'video')
-    parser.add_argument('-s', type=int)  # --steps: number of steps to run
+    parser.add_argument('-m', type=str)  # mode: ('train', 'eval)
+    parser.add_argument('-f', type=str)  # filename: model filename
+    parser.add_argument('-r', type=str)  # render: ('human', 'video')
+    parser.add_argument('-s', type=int)  # steps: number of steps to run
     args = parser.parse_args()
 
-    # set pytorch num threads and device
-    if PYTORCH_THREADS:
-        torch.set_num_threads(PYTORCH_THREADS)
+    # show pytorch num threads and device
     print('Pytorch threads:', torch.get_num_threads())
     print('Pytorch device:', DEVICE)
     device = torch.device(DEVICE)
@@ -496,7 +487,7 @@ if __name__ == '__main__':
         env.close()
 
     def evaluate():
-        #gym.logger.set_level(gym.logger.ERROR)
+        gym.logger.set_level(gym.logger.ERROR)
         if args.r == 'human':
             env = gym.make(ENV, full_action_space=False, frameskip=1, repeat_action_probability=0.01, render_mode='human')
         elif args.r == 'video':
