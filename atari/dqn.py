@@ -25,8 +25,8 @@ ENV = 'ALE/Pong-v5'
 # CPU Config
 if DEVICE == 'cpu':
     TRAIN_STEPS_MAX = 5_000_000  # train for this many steps, will go a little beyond to finish the current episode
-    REPLAY_MEMORY_MIN = 20_000  # minimum amount of accumulated experience before before we begin sampling
-    REPLAY_MEMORY_SIZE = 100_000  # max size of replay memory buffer
+    REPLAY_MEMORY_MIN = 15_000  # minimum amount of accumulated experience before before we begin sampling
+    REPLAY_MEMORY_SIZE = 50_000  # max size of replay memory buffer
     BATCH_SIZE = 32  # number of items to randomly sample from replay memory
     SYNC_TARGET_MODEL_EVERY = 10_000  # how often (in steps) to copy weights to target model
     LEARN_EVERY = 4  # update model weights every n steps via gradient descent
@@ -37,7 +37,7 @@ if DEVICE == 'cpu':
     EPS_START = 1  # starting value of epsilon
     EPS_MIN = .1  # minimum value for epsilon
     EPS_DECAY_STEPS = 1_000_000  # over how many steps to linearly reduce epsilon until it reaches EPS_MIN
-    EVAL_MODEL_EVERY = 250_000  # how often (in steps) to evaluate the model
+    EVAL_MODEL_EVERY = 10_000  # how often (in steps) to evaluate the model
 
 # GPU Config
 elif DEVICE == 'cuda':
@@ -368,12 +368,13 @@ class Agent:
 
                 # evaluate
                 if (train_steps % EVAL_MODEL_EVERY == 0) and (train_steps != 0):
-                    eval_reward = self.eval(episodes=30, epsilon=0.0)
                     # save intermediate models
                     torch.save(self.model.state_dict(), models_path / f'train_steps_{train_steps}.pth')
                     torch.save(self.model.state_dict(), models_path / 'latest.pth')
                     with open(models_path / 'latest.pkl', 'wb') as file:
                         pickle.dump(self.replay_memory, file)
+
+                    eval_reward = eval_agent(models_path / 'latest.pth')
                     if eval_reward > best_eval_reward:
                         print(f'Saving new best model with eval_reward of {eval_reward}')
                         torch.save(self.model.state_dict(), models_path / 'best.pth')
@@ -415,33 +416,6 @@ class Agent:
         writer.flush()
         writer.close()
 
-    def eval(self, episodes=10, epsilon=0.01, filename=None, render=False):
-        'Evaluate trained agent.'
-        if filename:
-            self.model.load_state_dict(torch.load(f'{filename}', map_location=torch.device('cpu')))
-
-        rewards = []  # total reward per episode
-        for n in range(episodes):
-            t0 = time.time()
-            state = self.env.reset()
-            done = False
-            episode_reward = 0
-            episode_steps = 0
-            self.model.eval()
-            with torch.no_grad():
-                while not done:
-                    action = self._act(state, epsilon)  # take an action using e-greedy policy
-                    state, reward, done, info = self.env.step(action)  # step the environment
-                    episode_reward += reward  # accumulate reward
-                    episode_steps += 1  # increment step count
-            rewards.append(episode_reward)
-            t1 = time.time()
-            print(f'Run {n}, agent ran for {episode_steps} steps, received {round(episode_reward, 2)} reward.  RunTime: {round(t1 - t0)}s')
-        mean_reward = np.mean(rewards)
-        print()
-        print(f'Average episode reward across {episodes} episodes: {mean_reward}.  Best reward: {max(rewards)}')
-        return mean_reward
-
 
 def pre_process_env(env):
     env = NoopResetEnv(env)
@@ -453,14 +427,60 @@ def pre_process_env(env):
     return env
 
 
+def eval_agent(filename, episodes=30, epsilon=0.0, render_mode=None):
+    'Evaluate trained model.'
+    print(f'Evaluating {filename}')
+    # instantiate new gym environment and agent
+    gym.logger.set_level(gym.logger.ERROR)
+    env = gym.make(ENV, full_action_space=False, frameskip=1, repeat_action_probability=0.01, render_mode=render_mode)
+    env = pre_process_env(env)
+    agent = Agent(env)
+    agent.model.load_state_dict(torch.load(f'{filename}', map_location=torch.device('cpu')))
+
+    if render_mode == 'rgb_array':
+        # create save paths
+        eval_videos_path = Path('eval_videos/' + str(datetime.now()).replace(' ', '-'))  # unique folder per eval run
+        print(f'Videos path: {eval_videos_path}')
+        env = gym.wrappers.record_video.RecordVideo(env, eval_videos_path, episode_trigger=lambda x: True)
+
+    rewards = []  # total reward per episode
+    for n in range(episodes):
+        t0 = time.time()
+        state = agent.env.reset()
+        #if render_mode == 'rgb_array':
+        #    env.start_video_recorder()
+        done = False
+        episode_reward = 0
+        episode_steps = 0
+        agent.model.eval()
+        with torch.no_grad():
+            while not done:
+                action = agent._act(state, epsilon)  # take an action using e-greedy policy
+                state, reward, done, info = agent.env.step(action)  # step the environment
+                episode_reward += reward  # accumulate reward
+                episode_steps += 1  # increment step count
+        rewards.append(episode_reward)
+        t1 = time.time()
+        #if render_mode == 'rgb_array':
+        #    env.close_video_recorder()
+        print(f'Run {n}, agent ran for {episode_steps} steps, received {round(episode_reward, 2)} reward.  RunTime: {round(t1 - t0)}s')
+    # cleanup
+    env.close()
+    del agent
+    # return results
+    mean_reward = np.mean(rewards)
+    print()
+    print(f'Average episode reward across {episodes} episodes: {mean_reward}.  Best reward: {max(rewards)}')
+    return mean_reward
+
+
 if __name__ == '__main__':
 
     # parse command line args
     parser = argparse.ArgumentParser()
     parser.add_argument('-m', type=str)  # mode: ('train', 'eval)
     parser.add_argument('-f', type=str)  # filename: model filename
-    parser.add_argument('-r', type=str)  # render: ('human', 'video')
-    parser.add_argument('-s', type=int)  # steps: number of steps to run
+    parser.add_argument('-r', type=str)  # render: ('human', 'rgb_array')
     args = parser.parse_args()
 
     # show pytorch num threads and device
@@ -468,36 +488,12 @@ if __name__ == '__main__':
     print('Pytorch device:', DEVICE)
     device = torch.device(DEVICE)
 
-    def train():
+    if args.m == 'train':
         gym.logger.set_level(gym.logger.ERROR)
         env = gym.make(ENV, full_action_space=False, frameskip=1, repeat_action_probability=0.01)
         env = pre_process_env(env)
         agent = Agent(env)
         agent.train(filename=args.f)
         env.close()
-
-    def evaluate():
-        gym.logger.set_level(gym.logger.ERROR)
-        if args.r == 'human':
-            render_mode = 'human'
-        elif args.r == 'video':
-            render_mode = 'rgb_array'
-        else:
-            render_mode = None
-        env = gym.make(ENV, full_action_space=False, frameskip=1, repeat_action_probability=0.01, render_mode=render_mode)
-        env = pre_process_env(env)
-        if args.s:
-            env._max_episode_steps = args.s
-        if args.r == 'video':
-            # create save paths
-            eval_videos_path = Path('eval_videos/' + str(datetime.now()).replace(' ', '-'))  # unique folder per eval run
-            print(f'Videos path: {eval_videos_path}')
-            env = gym.wrappers.record_video.RecordVideo(env, eval_videos_path, episode_trigger=lambda x: True)
-        agent = Agent(env)
-        agent.eval(episodes=30, epsilon=0.0, filename=args.f)
-        env.close()
-
-    if args.m == 'train':
-        train()
     elif args.m == 'eval':
-        evaluate()
+        eval_agent(args.f, render_mode=args.r)
