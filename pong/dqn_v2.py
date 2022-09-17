@@ -126,7 +126,7 @@ class Model2Layer(nn.Module):
     Total params: 1.3M
     """
 
-    def __init__(self, outputs, lr=1e-2):
+    def __init__(self, outputs):
         super(Model2Layer, self).__init__()
         # yapf: disable
         self.conv = nn.Sequential(
@@ -149,7 +149,7 @@ class Model2Layer(nn.Module):
             nn.Linear(256, outputs)
         )
         # yapf: enable
-        self.optimizer = optim.Adam(self.parameters(), lr=lr, eps=1e-4)
+        self.optimizer = optim.Adam(self.parameters(), lr=LR, eps=1e-4)
 
     def forward(self, x):
         assert x.shape == (1, FRAMES, 84, 84) or x.shape == (BATCH_SIZE, FRAMES, 84, 84)
@@ -169,7 +169,7 @@ class Model3Layer(nn.Module):
     Total params: 3.3M
     """
 
-    def __init__(self, outputs, lr=1e-2):
+    def __init__(self, outputs):
         super(Model3Layer, self).__init__()
         # yapf: disable
         self.conv = nn.Sequential(
@@ -195,7 +195,7 @@ class Model3Layer(nn.Module):
             nn.Linear(512, outputs)
         )
         # yapf: enable
-        self.optimizer = optim.Adam(self.parameters(), lr=lr, eps=1e-4)
+        self.optimizer = optim.Adam(self.parameters(), lr=LR, eps=1e-4)
 
     def forward(self, x):
         assert x.shape == (1, FRAMES, 84, 84) or x.shape == (BATCH_SIZE, FRAMES, 84, 84)
@@ -237,8 +237,8 @@ class Agent:
         self.env = env
         self.states_n = self.env.observation_space.shape[0]
         self.actions_n = self.env.action_space.n
-        self.model = Model3Layer(self.actions_n, lr=LR).to(device)
-        self.target_model = Model3Layer(self.actions_n, lr=LR).to(device)
+        self.model = Model3Layer(self.actions_n).to(device)
+        self.target_model = Model3Layer(self.actions_n).to(device)
         self.target_model.load_state_dict(self.model.state_dict())  # copy weights to target model
         self.replay_memory = ReplayMemory(REPLAY_MEMORY_SIZE)
         #print(summary(self.model, (4, 84, 84)))  # show summary of model archicture
