@@ -11,11 +11,3 @@ ENV=$(basename "$(pwd)")
 
 echo "Syncing $ENV"
 scp $DIR/*.sh $DIR/$ENV/*.py ${USER_IP}:
-
-# on cloud instance:
-# ./install_deps.sh
-# ./train.sh &
-# now safe to disconnect SSH connection
-# ./watch.sh  # to monitor logs
-
-# to stop training: `pkill -f train`

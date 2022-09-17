@@ -432,7 +432,7 @@ def eval_agent(filename, episodes=30, epsilon=0.0, render_mode=None):
     print(f'Evaluating {filename}')
     # instantiate new gym environment and agent
     gym.logger.set_level(gym.logger.ERROR)
-    env = gym.make(ENV, full_action_space=False, frameskip=1, repeat_action_probability=0.01, render_mode=render_mode)
+    env = gym.make(ENV, full_action_space=False, frameskip=1, repeat_action_probability=0.25, render_mode=render_mode)
     env = pre_process_env(env)
     agent = Agent(env)
     agent.model.load_state_dict(torch.load(f'{filename}', map_location=torch.device('cpu')))
@@ -490,7 +490,7 @@ if __name__ == '__main__':
 
     if args.m == 'train':
         gym.logger.set_level(gym.logger.ERROR)
-        env = gym.make(ENV, full_action_space=False, frameskip=1, repeat_action_probability=0.01)
+        env = gym.make(ENV, full_action_space=False, frameskip=1, repeat_action_probability=0.25)
         env = pre_process_env(env)
         agent = Agent(env)
         agent.train(filename=args.f)
