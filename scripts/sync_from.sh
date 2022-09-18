@@ -3,7 +3,7 @@
 # works on lambda and paperspace
 
 # example:
-# ../sync_from.sh ubuntu@104.171.203.82
+# ../scripts/sync_from.sh ubuntu@104.171.202.193
 
 USER_IP=$1
 REMOTE_DIR=$(cat current_training_run)

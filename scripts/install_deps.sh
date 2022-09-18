@@ -2,6 +2,9 @@
 # install dependencies on Lambda GPU cloud instances
 # works on lambda and paperspace
 
+# example:
+# install_deps.sh
+
 sudo apt-get update
 sudo apt-get install -y swig python3-dev
 pip install --upgrade pip

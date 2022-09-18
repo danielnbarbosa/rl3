@@ -3,7 +3,7 @@
 # works on lambda and paperspace
 
 # example
-# ../sync_to.sh ubuntu@104.171.203.82
+# ../scripts/sync_to.sh ubuntu@104.171.203.82
 
 USER_IP=$1
 DIR="/Users/daniel/src/rl3/"
