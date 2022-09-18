@@ -21,7 +21,8 @@ from torch.utils.tensorboard import SummaryWriter
 
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 #ENV = 'ALE/Pong-v5'
-ENV = 'ALE/Freeway-v5'
+#ENV = 'ALE/Freeway-v5'
+ENV = 'ALE/Breakout-v5'
 
 # CPU Config
 if DEVICE == 'cpu':
@@ -335,6 +336,8 @@ class Agent:
             eps = EPS_START
             # initialize environment
             state = self.env.reset()
+            if ENV == 'ALE/Breakout-v5':
+                lives = 5
             done = False
             while not done:
                 # choose action
@@ -350,8 +353,16 @@ class Agent:
                 t1_env = time.time()
                 episode_environment_time += (t1_env - t0_env)
 
-                # add to replay memory
-                self.replay_memory.add(tuple([state, action, reward, next_state, done]))  # add [s, a, r, s'] to replay memory
+                if ENV == 'ALE/Breakout-v5':
+                    # reward hacking: when a life is lost, save it in replay memory as terminal state
+                    if info['lives'] < lives:
+                        self.replay_memory.add(tuple([state, action, reward, next_state, True]))  # add [s, a, r, s'] to replay memory
+                        lives -= 1
+                    # otherwise add to replay memory as usual
+                    else:
+                        self.replay_memory.add(tuple([state, action, reward, next_state, done]))  # add [s, a, r, s'] to replay memory
+                else:
+                    self.replay_memory.add(tuple([state, action, reward, next_state, done]))  # add [s, a, r, s'] to replay memory
 
                 # learn
                 if (train_steps >= REPLAY_MEMORY_MIN) and (train_steps % LEARN_EVERY == 0):  # once replay memory has accumulated some experience
@@ -498,4 +509,4 @@ if __name__ == '__main__':
         agent.train(filename=args.f)
         env.close()
     elif args.m == 'eval':
-        eval_agent(args.f, render_mode=args.r)
+        eval_agent(args.f, epsilon=0.0, render_mode=args.r)
