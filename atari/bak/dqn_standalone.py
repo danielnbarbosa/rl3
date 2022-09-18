@@ -1,10 +1,11 @@
 '''
 DQN for learning from pixels.
-Converts RGB observation to scaled, grayscale stack of frames.
-In addition to vanilla DQN, this also implements dueling networks and double DQN.
+Converts RGB observation to cropped, scaled, grayscale stack of frames.
+In addition to the vanilla DQN implementation, this also uses dueling networks and double DQN.
 '''
 
 import logging
+import random
 import time
 import pickle
 import argparse
@@ -14,31 +15,210 @@ import gym
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.optim as optim
 from torchinfo import summary
 from torch.utils.tensorboard import SummaryWriter
-from models import Model3Layer
-from wrappers import preprocess_env
-from memory import ReplayMemory
 
-#ENV = 'ALE/Freeway-v5'
+DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
 #ENV = 'ALE/Pong-v5'
-#ENV = 'ALE/Breakout-v5'
-ENV = 'ALE/Boxing-v5'
+#ENV = 'ALE/Freeway-v5'
+ENV = 'ALE/Breakout-v5'
 
-TRAIN_STEPS_MAX = 50_000_000  # train for this many steps, will go a little beyond to finish the current episode
-REPLAY_MEMORY_MIN = 200_000  # minimum amount of accumulated experience before before we begin sampling
-REPLAY_MEMORY_SIZE = 1_000_000  # max size of replay memory buffer
-BATCH_SIZE = 32  # number of items to randomly sample from replay memory
-SYNC_TARGET_MODEL_EVERY = 10_000  # how often (in steps) to copy weights to target model
-LEARN_EVERY = 4  # update model weights every n steps via gradient descent
-FRAMES = 4  # number of observations to stack together to form the state
-FRAMESKIP = 4  # number of frames to repeat the same actions
-LR = 0.00025  # learning rate
-GAMMA = 0.99  # discount rate
-EPS_START = 1  # starting value of epsilon
-EPS_MIN = .1  # minimum value for epsilon
-EPS_DECAY_STEPS = 1_000_000  # over how many steps to linearly reduce epsilon until it reaches EPS_MIN
-EVAL_MODEL_EVERY = 250_000  # how often (in steps) to evaluate the model
+# CPU Config
+if DEVICE == 'cpu':
+    TRAIN_STEPS_MAX = 5_000_000  # train for this many steps, will go a little beyond to finish the current episode
+    REPLAY_MEMORY_MIN = 15_000  # minimum amount of accumulated experience before before we begin sampling
+    REPLAY_MEMORY_SIZE = 50_000  # max size of replay memory buffer
+    BATCH_SIZE = 32  # number of items to randomly sample from replay memory
+    SYNC_TARGET_MODEL_EVERY = 10_000  # how often (in steps) to copy weights to target model
+    LEARN_EVERY = 4  # update model weights every n steps via gradient descent
+    FRAMES = 4  # number of observations to stack together to form the state
+    FRAMESKIP = 4  # number of frames to repeat the same actions
+    LR = 0.00025  # learning rate
+    GAMMA = 0.99  # discount rate
+    EPS_START = 1  # starting value of epsilon
+    EPS_MIN = .1  # minimum value for epsilon
+    EPS_DECAY_STEPS = 1_000_000  # over how many steps to linearly reduce epsilon until it reaches EPS_MIN
+    EVAL_MODEL_EVERY = 10_000  # how often (in steps) to evaluate the model
+
+# GPU Config
+elif DEVICE == 'cuda':
+    TRAIN_STEPS_MAX = 50_000_000  # train for this many steps, will go a little beyond to finish the current episode
+    REPLAY_MEMORY_MIN = 200_000  # minimum amount of accumulated experience before before we begin sampling
+    REPLAY_MEMORY_SIZE = 1_000_000  # max size of replay memory buffer
+    BATCH_SIZE = 32  # number of items to randomly sample from replay memory
+    SYNC_TARGET_MODEL_EVERY = 10_000  # how often (in steps) to copy weights to target model
+    LEARN_EVERY = 4  # update model weights every n steps via gradient descent
+    FRAMES = 4  # number of observations to stack together to form the state
+    FRAMESKIP = 4  # number of frames to repeat the same actions
+    LR = 0.00025  # learning rate
+    GAMMA = 0.99  # discount rate
+    EPS_START = 1  # starting value of epsilon
+    EPS_MIN = .1  # minimum value for epsilon
+    EPS_DECAY_STEPS = 1_000_000  # over how many steps to linearly reduce epsilon until it reaches EPS_MIN
+    EVAL_MODEL_EVERY = 250_000  # how often (in steps) to evaluate the model
+
+
+class SkipFrame(gym.Wrapper):
+
+    def __init__(self, env, skip):
+        super().__init__(env)
+        self._skip = skip
+
+    def step(self, action):
+        total_reward = 0.0
+        done = False
+        for i in range(self._skip):
+            obs, reward, done, info = self.env.step(action)
+            total_reward += reward
+            if done:
+                break
+        return obs, total_reward, done, info
+
+
+class NoopResetEnv(gym.Wrapper):
+    '''From: https://github.com/BITminicc/OpenAI-gym-Breakout/blob/master/atari_wrappers.py'''
+
+    def __init__(self, env, noop_max=30):
+        """Sample initial states by taking random number of no-ops on reset.
+        No-op is assumed to be action 0.
+        """
+        gym.Wrapper.__init__(self, env)
+        self.noop_max = noop_max
+        self.override_num_noops = None
+        self.noop_action = 0
+        #assert env.unwrapped.get_action_meanings()[0] == 'NOOP'
+
+    def reset(self, **kwargs):
+        """ Do no-op action for a number of steps in [1, noop_max]."""
+        self.env.reset(**kwargs)
+        if self.override_num_noops is not None:
+            noops = self.override_num_noops
+        else:
+            noops = self.unwrapped.np_random.integers(1, self.noop_max + 1)  # pylint: disable=E1101
+        assert noops > 0
+        obs = None
+        for _ in range(noops):
+            obs, _, done, _ = self.env.step(self.noop_action)
+            if done:
+                obs = self.env.reset(**kwargs)
+        return obs
+
+    def step(self, ac):
+        return self.env.step(ac)
+
+
+class Model2Layer(nn.Module):
+    """
+    Input is 4 stacked 84x84 int8 grayscale frames.
+    This is the architecture from Deepmind 2013 paper "Playing Atari with Deep Reinforcement Learning".
+    Added dueling networks which doubles the number of params.
+    Total params: 1.3M
+    """
+
+    def __init__(self, outputs):
+        super(Model2Layer, self).__init__()
+        # yapf: disable
+        self.conv = nn.Sequential(
+            nn.Conv2d(4, 16, kernel_size=8, stride=4),  # (N, 4, 84, 84)  -> (N, 16, 20, 20)
+            nn.BatchNorm2d(16),
+            nn.ReLU(),
+            nn.Conv2d(16, 32, kernel_size=4, stride=2),  # (N, 16, 20, 20) -> (N, 32, 9, 9)
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.Flatten()
+        )
+        self.value_stream = nn.Sequential(
+            nn.Linear(2592, 256),
+            nn.ReLU(),
+            nn.Linear(256, 1)
+        )
+        self.advantage_stream = nn.Sequential(
+            nn.Linear(2592, 256),
+            nn.ReLU(),
+            nn.Linear(256, outputs)
+        )
+        # yapf: enable
+        self.optimizer = optim.Adam(self.parameters(), lr=LR, eps=1e-4)
+
+    def forward(self, x):
+        assert x.shape == (1, FRAMES, 84, 84) or x.shape == (BATCH_SIZE, FRAMES, 84, 84)
+        x = (x / 255.0)  # rescale pixel value as 0 to 1.
+        F = self.conv(x)
+        V = self.value_stream(F)
+        A = self.advantage_stream(F)
+        Q = V + (A - A.mean())
+        return Q
+
+
+class Model3Layer(nn.Module):
+    """
+    Input is 4 stacked 84x84 int8 grayscale frames.
+    This is the architecture from Deepmind 2015 paper "Human-level control through deep reinforcement learning"
+    Added dueling networks which doubles the number of params.
+    Total params: 3.3M
+    """
+
+    def __init__(self, outputs):
+        super(Model3Layer, self).__init__()
+        # yapf: disable
+        self.conv = nn.Sequential(
+            nn.Conv2d(4, 32, kernel_size=8, stride=4),  # (N, 4, 84, 84)  -> (N, 32, 20, 20)
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2),  # (N, 32, 20, 20) -> (N, 64, 9, 9)
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1),  # (N, 64, 9, 9) -> (N, 64, 7, 7)
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+            nn.Flatten(),
+        )
+        self.value_stream = nn.Sequential(
+            nn.Linear(3136, 512),
+            nn.ReLU(),
+            nn.Linear(512, 1)
+        )
+        self.advantage_stream = nn.Sequential(
+            nn.Linear(3136, 512),
+            nn.ReLU(),
+            nn.Linear(512, outputs)
+        )
+        # yapf: enable
+        self.optimizer = optim.Adam(self.parameters(), lr=LR, eps=1e-4)
+
+    def forward(self, x):
+        assert x.shape == (1, FRAMES, 84, 84) or x.shape == (BATCH_SIZE, FRAMES, 84, 84)
+        x = (x / 255.0)  # rescale pixel value as 0 to 1.
+        F = self.conv(x)
+        V = self.value_stream(F)
+        A = self.advantage_stream(F)
+        Q = V + (A - A.mean())
+        return Q
+
+
+class ReplayMemory:
+    '''FIFO buffer for storing experience tuples.'''
+
+    def __init__(self, size):
+        self.size = size
+        self.memory = []
+        self.idx = 0
+
+    def add(self, item):
+        '''Add an item to the buffer.'''
+        if len(self.memory) < self.size:
+            self.memory.append(item)
+        else:
+            self.memory[self.idx] = item
+        self.idx = (self.idx + 1) % self.size  # circulur buffer
+
+    def sample(self, n):
+        '''Randomly sample n elements from the buffer'''
+        return random.sample(self.memory, n)
+
+    def __len__(self):
+        return len(self.memory)
 
 
 class Agent:
@@ -47,11 +227,12 @@ class Agent:
         self.env = env
         self.states_n = self.env.observation_space.shape[0]
         self.actions_n = self.env.action_space.n
-        self.model = Model3Layer(self.actions_n, LR).to(device)
-        self.target_model = Model3Layer(self.actions_n, LR).to(device)
+        self.model = Model3Layer(self.actions_n).to(device)
+        self.target_model = Model3Layer(self.actions_n).to(device)
         self.target_model.load_state_dict(self.model.state_dict())  # copy weights to target model
         self.replay_memory = ReplayMemory(REPLAY_MEMORY_SIZE)
         #print(summary(self.model, (4, 84, 84)))  # show summary of model archicture
+        print(f'Model: {self.model.__class__}')
 
     def _act(self, state, eps):
         '''Given a state return an action following an epsilon greedy policy.'''
@@ -80,6 +261,12 @@ class Agent:
         # sanity checks
         assert states.shape == next_states.shape == (BATCH_SIZE, FRAMES, 84, 84)
         assert actions.shape == rewards.shape == dones.shape == (BATCH_SIZE,)
+
+        # calculate DQN target
+        #Q_target = self.target_model.forward(next_states)  # predict value of next_state using target model)
+        #assert Q_target.shape == (BATCH_SIZE, self.actions_n)
+        #targets = rewards + (GAMMA * Q_target.detach().max(1)[0]) * (1 - dones)  # take max (greedy action).  (1 - dones) makes target = reward for terminal states
+        #assert targets.shape == (BATCH_SIZE,)
 
         #calculate DDQN target (used to reduce maximization bias)
         Q = self.model.forward(next_states).detach()  # predict value of next_state state using model
@@ -119,7 +306,7 @@ class Agent:
                 self.replay_memory = pickle.load(file)
 
         # create save paths
-        training_run_path = Path('training_runs/' + device.type + '-' + ENV.split('/')[1] + '-' + str(datetime.now()).replace(' ', '-'))  # unique folder per training run
+        training_run_path = Path('training_runs/' + DEVICE + '-' + str(datetime.now()).replace(' ', '-'))  # unique folder per training run
         training_run_path.mkdir(parents=True)
         models_path = training_run_path / 'models'  # models
         models_path.mkdir()
@@ -137,6 +324,7 @@ class Agent:
 
         while train_steps <= TRAIN_STEPS_MAX:
             n += 1
+            logging.debug(f'-------------------------- STARTING EPISODE {n} --------------------------')
             t0 = time.time()
             # initialize counters
             episode_reward = 0
@@ -161,10 +349,10 @@ class Agent:
                 # take action
                 t0_env = time.time()
                 next_state, reward, done, info = self.env.step(action)  # step the environment
+                logging.debug(f'Episode {n}, step {episode_steps}.  Took action {action}, received {round(reward, 2)} reward, done is {done}, info is {info}.')
                 t1_env = time.time()
                 episode_environment_time += (t1_env - t0_env)
 
-                # add to replay memory
                 if ENV == 'ALE/Breakout-v5':
                     # reward hacking: when a life is lost, save it in replay memory as terminal state
                     if info['lives'] < lives:
@@ -179,6 +367,7 @@ class Agent:
                 # learn
                 if (train_steps >= REPLAY_MEMORY_MIN) and (train_steps % LEARN_EVERY == 0):  # once replay memory has accumulated some experience
                     t0_learn = time.time()
+                    logging.debug('Learning')
                     loss = self._learn()
                     episode_loss += loss  # accumulate loss
                     t1_learn = time.time()
@@ -186,6 +375,7 @@ class Agent:
 
                 # sync target model
                 if (train_steps % SYNC_TARGET_MODEL_EVERY == 0) and (train_steps != 0):  # every SYNC_TARGET_MODEL_EVERY steps
+                    logging.debug('Syncing target model')
                     self.target_model.load_state_dict(self.model.state_dict())  # copy weights to target model
 
                 # evaluate
@@ -196,7 +386,7 @@ class Agent:
                     with open(models_path / 'latest.pkl', 'wb') as file:
                         pickle.dump(self.replay_memory, file)
 
-                    eval_reward = evaluate(models_path / 'latest.pth')
+                    eval_reward = eval_agent(models_path / 'latest.pth')
                     if eval_reward > best_eval_reward:
                         print(f'Saving new best model with eval_reward of {eval_reward}')
                         torch.save(self.model.state_dict(), models_path / 'best.pth')
@@ -239,17 +429,26 @@ class Agent:
         writer.close()
 
 
-def evaluate(filename, episodes=30, epsilon=0.01, render_mode=None):
-    'Evaluate trained model.  Uses fresh env and agent to avoid interacting with training.'
+def pre_process_env(env):
+    env = NoopResetEnv(env)
+    env = SkipFrame(env, skip=FRAMESKIP)
+    #env = gym.wrappers.transform_observation.TransformObservation(env, lambda obs: obs[30:195, :, :])  # crop
+    env = gym.wrappers.gray_scale_observation.GrayScaleObservation(env)  # convert to grayscale
+    env = gym.wrappers.resize_observation.ResizeObservation(env, 84)  # resize to (84,84)
+    env = gym.wrappers.frame_stack.FrameStack(env, FRAMES)
+    return env
 
+
+def eval_agent(filename, episodes=30, epsilon=0.01, render_mode=None):
+    'Evaluate trained model.'
     print(f'Evaluating {filename}')
     # instantiate new gym environment and agent
     gym.logger.set_level(gym.logger.ERROR)
     env = gym.make(ENV, full_action_space=False, frameskip=1, repeat_action_probability=0.25, render_mode=render_mode)
-    env = preprocess_env(env, FRAMESKIP, FRAMES)
+    env = pre_process_env(env)
 
     if render_mode == 'rgb_array':
-        # create save path
+        # create save paths
         eval_videos_path = Path('eval_videos/' + str(datetime.now()).replace(' ', '-'))  # unique folder per eval run
         print(f'Videos path: {eval_videos_path}')
         env = gym.wrappers.record_video.RecordVideo(env, eval_videos_path, episode_trigger=lambda x: True)
@@ -261,6 +460,8 @@ def evaluate(filename, episodes=30, epsilon=0.01, render_mode=None):
     for n in range(episodes):
         t0 = time.time()
         state = agent.env.reset()
+        #if render_mode == 'rgb_array':
+        #    env.start_video_recorder()
         done = False
         episode_reward = 0
         episode_steps = 0
@@ -273,6 +474,8 @@ def evaluate(filename, episodes=30, epsilon=0.01, render_mode=None):
                 episode_steps += 1  # increment step count
         rewards.append(episode_reward)
         t1 = time.time()
+        #if render_mode == 'rgb_array':
+        #    env.close_video_recorder()
         print(f'Run {n}, agent ran for {episode_steps} steps, received {round(episode_reward, 2)} reward.  RunTime: {round(t1 - t0)}s')
     # cleanup
     env.close()
@@ -294,16 +497,16 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # show pytorch num threads and device
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('Pytorch threads:', torch.get_num_threads())
-    print('Pytorch device:', device)
+    print('Pytorch device:', DEVICE)
+    device = torch.device(DEVICE)
 
     if args.m == 'train':
         gym.logger.set_level(gym.logger.ERROR)
         env = gym.make(ENV, full_action_space=False, frameskip=1, repeat_action_probability=0.25)
-        env = preprocess_env(env, FRAMESKIP, FRAMES)
+        env = pre_process_env(env)
         agent = Agent(env)
         agent.train(filename=args.f)
         env.close()
     elif args.m == 'eval':
-        evaluate(args.f, epsilon=0.0, render_mode=args.r)
+        eval_agent(args.f, epsilon=0.0, render_mode=args.r)
