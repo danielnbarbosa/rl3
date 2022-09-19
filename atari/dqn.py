@@ -22,8 +22,8 @@ from memory import ReplayMemory
 
 #ENV = 'ALE/Freeway-v5'
 #ENV = 'ALE/Pong-v5'
-#ENV = 'ALE/Breakout-v5'
-ENV = 'ALE/Boxing-v5'
+#ENV = 'ALE/Boxing-v5'
+ENV = 'ALE/Riverraid-v5'
 
 TRAIN_STEPS_MAX = 50_000_000  # train for this many steps, will go a little beyond to finish the current episode
 REPLAY_MEMORY_MIN = 200_000  # minimum amount of accumulated experience before before we begin sampling
@@ -148,8 +148,6 @@ class Agent:
             eps = EPS_START
             # initialize environment
             state = self.env.reset()
-            if ENV == 'ALE/Breakout-v5':
-                lives = 5
             done = False
             while not done:
                 # choose action
@@ -165,16 +163,7 @@ class Agent:
                 episode_environment_time += (t1_env - t0_env)
 
                 # add to replay memory
-                if ENV == 'ALE/Breakout-v5':
-                    # reward hacking: when a life is lost, save it in replay memory as terminal state
-                    if info['lives'] < lives:
-                        self.replay_memory.add(tuple([state, action, reward, next_state, True]))  # add [s, a, r, s'] to replay memory
-                        lives -= 1
-                    # otherwise add to replay memory as usual
-                    else:
-                        self.replay_memory.add(tuple([state, action, reward, next_state, done]))  # add [s, a, r, s'] to replay memory
-                else:
-                    self.replay_memory.add(tuple([state, action, reward, next_state, done]))  # add [s, a, r, s'] to replay memory
+                self.replay_memory.add(tuple([state, action, reward, next_state, done]))  # add [s, a, r, s'] to replay memory
 
                 # learn
                 if (train_steps >= REPLAY_MEMORY_MIN) and (train_steps % LEARN_EVERY == 0):  # once replay memory has accumulated some experience

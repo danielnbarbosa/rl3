@@ -53,6 +53,7 @@ class NoopResetEnv(gym.Wrapper):
 def preprocess_env(env, frameskip, frames):
     env = NoopResetEnv(env)
     env = SkipFrame(env, skip=frameskip)
+    env = gym.wrappers.transform_observation.TransformObservation(env, lambda obs: obs[30:195, :, :])  # crop
     env = gym.wrappers.gray_scale_observation.GrayScaleObservation(env)  # convert to grayscale
     env = gym.wrappers.resize_observation.ResizeObservation(env, 84)  # resize to (84,84)
     env = gym.wrappers.frame_stack.FrameStack(env, frames)
