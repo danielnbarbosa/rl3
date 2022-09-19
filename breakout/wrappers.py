@@ -60,6 +60,11 @@ class FireAsFirstAction(gym.Wrapper):
         super().__init__(env)
         self.fire_action = 1
 
+    def reset(self, **kwargs):
+        obs = self.env.reset(**kwargs)
+        self.env.step(self.fire_action)
+        return obs
+
     def step(self, action):
         lives_before_action = self.env.unwrapped.ale.lives()
         obs, reward, done, info = self.env.step(action)
