@@ -280,7 +280,7 @@ def evaluate(filename, episodes=30, epsilon=0.0, render_mode=None):
     # return results
     mean_reward = np.mean(rewards)
     print()
-    print(f'Average episode reward across {episodes} episodes: {mean_reward}.  Best reward: {max(rewards)}')
+    print(f'Average episode reward across {episodes} episodes: {round(mean_reward, 2)}.  Best reward: {max(rewards)}')
     return mean_reward
 
 
