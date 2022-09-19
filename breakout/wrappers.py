@@ -50,9 +50,28 @@ class NoopResetEnv(gym.Wrapper):
         return self.env.step(ac)
 
 
+class FireAsFirstAction(gym.Wrapper):
+    '''
+    See https://github.com/ageron/handson-ml2/blob/master/18_reinforcement_learning.ipynb
+    Forces FIRE as first action after losing a life to get the ball moving.
+    '''
+
+    def __init__(self, env):
+        super().__init__(env)
+        self.fire_action = 1
+
+    def step(self, action):
+        lives_before_action = self.env.unwrapped.ale.lives()
+        obs, reward, done, info = self.env.step(action)
+        if self.env.unwrapped.ale.lives() < lives_before_action and not done:
+            self.env.step(self.fire_action)
+        return obs, reward, done, info
+
+
 def preprocess_env(env, frameskip, frames):
     env = NoopResetEnv(env)
     env = SkipFrame(env, skip=frameskip)
+    env = FireAsFirstAction(env)
     env = gym.wrappers.transform_observation.TransformObservation(env, lambda obs: obs[30:195, :, :])  # crop
     env = gym.wrappers.gray_scale_observation.GrayScaleObservation(env)  # convert to grayscale
     env = gym.wrappers.resize_observation.ResizeObservation(env, 84)  # resize to (84,84)

@@ -6,7 +6,8 @@ In addition to vanilla DQN, this also implements dueling networks and double DQN
 Customizations specific to Breakout:
 - when a life is lost, save it in replay memory as terminal state
 - lowered learning rate to 0.00005
-- added crop wrapper to preprocess_env() to crop out top and bottom of screen
+- wrapper tp crop out top and bottom of screen
+- wrapper to force FIRE as first action after losing a life to get the ball moving
 '''
 
 import logging
@@ -238,7 +239,7 @@ class Agent:
         writer.close()
 
 
-def evaluate(filename, episodes=30, epsilon=0.01, render_mode=None):
+def evaluate(filename, episodes=30, epsilon=0.0, render_mode=None):
     'Evaluate trained model.  Uses fresh env and agent to avoid interacting with training.'
 
     print(f'Evaluating {filename}')

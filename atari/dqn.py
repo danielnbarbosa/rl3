@@ -228,7 +228,7 @@ class Agent:
         writer.close()
 
 
-def evaluate(filename, episodes=30, epsilon=0.01, render_mode=None):
+def evaluate(filename, episodes=30, epsilon=0.0, render_mode=None):
     'Evaluate trained model.  Uses fresh env and agent to avoid interacting with training.'
 
     print(f'Evaluating {filename}')
