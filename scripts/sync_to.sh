@@ -10,4 +10,4 @@ DIR="/Users/daniel/src/rl3/"
 ENV=$(basename "$(pwd)")
 
 echo "Syncing $ENV"
-scp $DIR/*.sh $DIR/$ENV/*.py ${USER_IP}:
+scp $DIR/scripts/*.sh $DIR/$ENV/*.py ${USER_IP}:
