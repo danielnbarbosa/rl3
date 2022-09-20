@@ -5,10 +5,10 @@ My third iteration of RL code.  This time focusing on learning to play games fro
 ../scripts/sync_to.sh <USER@IP>  # to upload training script
 ssh <USER@IP>
 # on cloud instance
-install_deps.sh
-train.sh &
+./install_deps.sh
+./train.sh &
 # now safe to disconnect SSH connection
-tail.sh  # to monitor logs
+./tail.sh  # to monitor logs
 # back on local machine
 ../scripts/set.sh <training_run_path>
 ../scripts/sync_from.sh <USER@IP>  # to download models and metrics

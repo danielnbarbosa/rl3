@@ -7,8 +7,9 @@
 
 # lambda
 if [ $(whoami) == "ubuntu" ]
-    then stdbuf -oL python -u dqn.py -m train | tee train-summary.log
+    then PYTHON="python"
 # paperspace
 elif [ $(whoami) == "paperspace" ]
-    then stdbuf -oL python3 -u dqn.py -m train | tee train-summary.log
+    then PYTHON="python3"
 fi
+stdbuf -oL $PYTHON -u dqn.py -m train | tee train-summary.log

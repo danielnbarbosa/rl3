@@ -6,7 +6,7 @@ In addition to vanilla DQN, this also implements dueling networks and double DQN
 Customizations specific to Breakout:
 - when a life is lost, save it in replay memory as terminal state
 - lowered learning rate to 0.00005
-- wrapper tp crop out top and bottom of screen
+- wrapper to crop out top and bottom of screen
 - wrapper to force FIRE as first action after losing a life to get the ball moving
 '''
 
