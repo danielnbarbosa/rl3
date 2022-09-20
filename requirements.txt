@@ -6,7 +6,7 @@ pandas
 scikit-learn
 
 # gym
-gym
+gym==0.25.2
 gym[classic_control]
 gym[box2d]
 gym[atari]
