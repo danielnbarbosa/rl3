@@ -9,7 +9,14 @@ Customizations specific to super-mario-bros:
 - make environment using gym_super_mario_bros.make()
 - training path uses ENV instead of ENV.split()
 - in NoopResetEnv wrapper, noops = self.unwrapped.np_random.randint instead of self.unwrapped.np_random.integers
-
+- using RIGHT_ONLY action space
+- disabled NoopReset wrapper
+- added CustomReward wrapper
+- added old style env.render() to render game for human
+- added old style video recorder used in gym 0.23.0
+- made evaluate use epsilon greedy
+- evaluate more frequently
+- reduce EPS_DECAY_STEPS, REPLAY_MEMORY_MIN, REPLAY_MEMORY_SIZE by 1/2
 '''
 
 import logging
@@ -28,12 +35,13 @@ from models import Model3Layer
 from wrappers import preprocess_env
 from memory import ReplayMemory
 import gym_super_mario_bros
+from old_video_recorder.monitor import Monitor
 
-ENV = 'SuperMarioBros-v0'
+ENV = 'SuperMarioBros-1-1-v0'
 
 TRAIN_STEPS_MAX = 50_000_000  # train for this many steps, will go a little beyond to finish the current episode
-REPLAY_MEMORY_MIN = 200_000  # minimum amount of accumulated experience before before we begin sampling
-REPLAY_MEMORY_SIZE = 1_000_000  # max size of replay memory buffer
+REPLAY_MEMORY_MIN = 100_000  # minimum amount of accumulated experience before before we begin sampling
+REPLAY_MEMORY_SIZE = 500_000  # max size of replay memory buffer
 BATCH_SIZE = 32  # number of items to randomly sample from replay memory
 SYNC_TARGET_MODEL_EVERY = 10_000  # how often (in steps) to copy weights to target model
 LEARN_EVERY = 4  # update model weights every n steps via gradient descent
@@ -43,8 +51,8 @@ LR = 0.00025  # learning rate
 GAMMA = 0.99  # discount rate
 EPS_START = 1  # starting value of epsilon
 EPS_MIN = .1  # minimum value for epsilon
-EPS_DECAY_STEPS = 1_000_000  # over how many steps to linearly reduce epsilon until it reaches EPS_MIN
-EVAL_MODEL_EVERY = 250_000  # how often (in steps) to evaluate the model
+EPS_DECAY_STEPS = 500_000  # over how many steps to linearly reduce epsilon until it reaches EPS_MIN
+EVAL_MODEL_EVERY = 100_000  # how often (in steps) to evaluate the model
 
 
 class Agent:
@@ -224,7 +232,7 @@ class Agent:
 
             # show intermediate results
             print(
-                f'Ep: {n}\tReward: {episode_reward}\tEps: {round(eps, 4)}\tBufLen: {len(self.replay_memory)}\tSteps:{episode_steps}\tTotSteps: {train_steps}\tRunTime: {round(episode_run_time)}s ({round(episode_act_time)}/{round(episode_environment_time)}/{round(episode_learn_time)})\tTotRunTime: {round(total_run_time)}s\tSteps/s: {round(steps_per_second)}\tEvalReward: {round(eval_reward, 2)}'
+                f'Ep: {n}\tReward: {round(episode_reward,2)}\tEps: {round(eps, 4)}\tBufLen: {len(self.replay_memory)}\tSteps:{episode_steps}\tTotSteps: {train_steps}\tRunTime: {round(episode_run_time)}s ({round(episode_act_time)}/{round(episode_environment_time)}/{round(episode_learn_time)})\tTotRunTime: {round(total_run_time)}s\tSteps/s: {round(steps_per_second)}\tEvalReward: {round(eval_reward, 2)}'
             )
         # save final model
         torch.save(self.model.state_dict(), models_path / 'final.pth')
@@ -234,7 +242,7 @@ class Agent:
         writer.close()
 
 
-def evaluate(filename, episodes=30, epsilon=0.0, render_mode=None):
+def evaluate(filename, episodes=30, epsilon=0.05, render_mode=None):
     'Evaluate trained model.  Uses fresh env and agent to avoid interacting with training.'
 
     print(f'Evaluating {filename}')
@@ -248,7 +256,8 @@ def evaluate(filename, episodes=30, epsilon=0.0, render_mode=None):
         # create save path
         eval_videos_path = Path('eval_videos/' + str(datetime.now()).replace(' ', '-'))  # unique folder per eval run
         print(f'Videos path: {eval_videos_path}')
-        env = gym.wrappers.record_video.RecordVideo(env, eval_videos_path, episode_trigger=lambda x: True)
+        #env = gym.wrappers.record_video.RecordVideo(env, eval_videos_path, episode_trigger=lambda x: True)
+        env = Monitor(env, eval_videos_path, video_callable=lambda episode_id: True, force=True)
 
     agent = Agent(env)
     agent.model.load_state_dict(torch.load(f'{filename}', map_location=torch.device('cpu')))
@@ -263,6 +272,9 @@ def evaluate(filename, episodes=30, epsilon=0.0, render_mode=None):
         agent.model.eval()
         with torch.no_grad():
             while not done:
+                if render_mode == 'human':
+                    env.render()
+                    time.sleep(FRAMESKIP / 100)
                 action = agent._act(state, epsilon)  # take an action using e-greedy policy
                 state, reward, done, info = agent.env.step(action)  # step the environment
                 episode_reward += reward  # accumulate reward
@@ -276,7 +288,7 @@ def evaluate(filename, episodes=30, epsilon=0.0, render_mode=None):
     # return results
     mean_reward = np.mean(rewards)
     print()
-    print(f'Average episode reward across {episodes} episodes: {mean_reward}.  Best reward: {max(rewards)}')
+    print(f'Average episode reward across {episodes} episodes: {round(mean_reward, 2)}.  Best reward: {round(max(rewards), 2)}')
     return mean_reward
 
 
@@ -303,4 +315,4 @@ if __name__ == '__main__':
         agent.train(filename=args.f)
         env.close()
     elif args.m == 'eval':
-        evaluate(args.f, epsilon=0.0, render_mode=args.r)
+        evaluate(args.f, render_mode=args.r)

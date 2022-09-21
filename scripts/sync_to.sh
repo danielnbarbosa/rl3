@@ -11,3 +11,4 @@ ENV=$(basename "$(pwd)")
 
 echo "Syncing $ENV"
 scp $DIR/scripts/*.sh $DIR/$ENV/*.py ${USER_IP}:
+scp -r $DIR/$ENV/old_video_recorder ${USER_IP}:

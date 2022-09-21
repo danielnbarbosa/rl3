@@ -52,11 +52,31 @@ class NoopResetEnv(gym.Wrapper):
         return self.env.step(ac)
 
 
+class CustomReward(gym.Wrapper):
+    '''From https://github.com/trustycoder83/super-mario-bros-v0/blob/master/wrappers.py'''
+
+    def __init__(self, env):
+        gym.Wrapper.__init__(self, env)
+        self._current_score = 0
+
+    def step(self, action):
+        state, reward, done, info = self.env.step(action)
+        reward += (info['score'] - self._current_score) / 40.0
+        self._current_score = info['score']
+        if done:
+            if info['flag_get']:
+                reward += 350.0
+            else:
+                reward -= 50.0
+        return state, reward / 10.0, done, info
+
+
 def preprocess_env(env, frameskip, frames):
-    env = NoopResetEnv(env)
+    #env = NoopResetEnv(env)
     env = SkipFrame(env, skip=frameskip)
     env = JoypadSpace(env, RIGHT_ONLY)
     env = gym.wrappers.gray_scale_observation.GrayScaleObservation(env)  # convert to grayscale
     env = gym.wrappers.resize_observation.ResizeObservation(env, 84)  # resize to (84,84)
     env = gym.wrappers.frame_stack.FrameStack(env, frames)
+    env = CustomReward(env)
     return env
