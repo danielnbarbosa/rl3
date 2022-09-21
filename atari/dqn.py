@@ -295,4 +295,4 @@ if __name__ == '__main__':
         agent.train(filename=args.f)
         env.close()
     elif args.m == 'eval':
-        evaluate(args.f, epsilon=0.0, render_mode=args.r)
+        evaluate(args.f, episodes=30, epsilon=0.0, render_mode=args.r)

@@ -8,3 +8,6 @@ videos_eval
 current_training_run
 !*/saved_training_runs/*/models/latest.pth
 !*/saved_training_runs/*/models/best.pth
+!*/saved_training_runs/*/runs
+!*/saved_training_runs/*/*.png
+!*/saved_training_runs/*/*.mp4

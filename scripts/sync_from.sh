@@ -13,3 +13,4 @@ LOCAL_DIR="/Users/daniel/src/rl3/$ENV/training_runs/"
 
 echo "Syncing $ENV $REMOTE_DIR"
 rsync -av --exclude train.log --exclude train_steps_*.pth --exclude *.pkl ${USER_IP}:${REMOTE_DIR} $LOCAL_DIR
+#rsync -av ${USER_IP}:${REMOTE_DIR} $LOCAL_DIR
