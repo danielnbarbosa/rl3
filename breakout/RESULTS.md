@@ -6,6 +6,7 @@ start time: Mon Sep 19 17:24:30 UTC 2022
 end time:   Wed Sep 21 13:52:53 UTC 2022
 total time: 44 hours
 total steps: 30M (120M frames)
+episodes: 35,700
 
 memory buffer: models/latest.pkl
 tensorboard: runs
