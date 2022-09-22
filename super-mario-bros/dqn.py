@@ -38,7 +38,7 @@ from memory import ReplayMemory
 import gym_super_mario_bros
 from old_video_recorder.monitor import Monitor
 
-ENV = 'SuperMarioBros-1-2-v0'
+ENV = 'SuperMarioBros-v0'
 
 TRAIN_STEPS_MAX = 50_000_000  # train for this many steps, will go a little beyond to finish the current episode
 REPLAY_MEMORY_MIN = 50_000  # minimum amount of accumulated experience before before we begin sampling
