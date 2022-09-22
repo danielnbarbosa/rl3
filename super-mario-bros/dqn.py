@@ -16,7 +16,8 @@ Customizations specific to super-mario-bros:
 - added old style video recorder used in gym 0.23.0
 - made evaluate use epsilon greedy
 - evaluate more frequently
-- reduce EPS_DECAY_STEPS, REPLAY_MEMORY_MIN, REPLAY_MEMORY_SIZE by 1/2
+- reduce EPS_DECAY_STEPS, REPLAY_MEMORY_MIN, REPLAY_MEMORY_SIZE by 1/4
+- set GAMMA to 0.9
 '''
 
 import logging
@@ -40,18 +41,18 @@ from old_video_recorder.monitor import Monitor
 ENV = 'SuperMarioBros-1-1-v0'
 
 TRAIN_STEPS_MAX = 50_000_000  # train for this many steps, will go a little beyond to finish the current episode
-REPLAY_MEMORY_MIN = 100_000  # minimum amount of accumulated experience before before we begin sampling
-REPLAY_MEMORY_SIZE = 500_000  # max size of replay memory buffer
+REPLAY_MEMORY_MIN = 50_000  # minimum amount of accumulated experience before before we begin sampling
+REPLAY_MEMORY_SIZE = 250_000  # max size of replay memory buffer
 BATCH_SIZE = 32  # number of items to randomly sample from replay memory
 SYNC_TARGET_MODEL_EVERY = 10_000  # how often (in steps) to copy weights to target model
 LEARN_EVERY = 4  # update model weights every n steps via gradient descent
 FRAMES = 4  # number of observations to stack together to form the state
 FRAMESKIP = 4  # number of frames to repeat the same actions
 LR = 0.00025  # learning rate
-GAMMA = 0.99  # discount rate
+GAMMA = 0.9  # discount rate
 EPS_START = 1  # starting value of epsilon
 EPS_MIN = .1  # minimum value for epsilon
-EPS_DECAY_STEPS = 500_000  # over how many steps to linearly reduce epsilon until it reaches EPS_MIN
+EPS_DECAY_STEPS = 250_000  # over how many steps to linearly reduce epsilon until it reaches EPS_MIN
 EVAL_MODEL_EVERY = 100_000  # how often (in steps) to evaluate the model
 
 
@@ -315,4 +316,4 @@ if __name__ == '__main__':
         agent.train(filename=args.f)
         env.close()
     elif args.m == 'eval':
-        evaluate(args.f, render_mode=args.r)
+        evaluate(args.f, epsilon=0.0, render_mode=args.r)

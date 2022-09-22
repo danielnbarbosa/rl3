@@ -1,7 +1,7 @@
 *.pth
 *.pkl
 runs
-videos_eval
+eval_videos
 *.mp4
 *.meta.json
 *.log
