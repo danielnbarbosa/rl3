@@ -9,12 +9,12 @@ Customizations specific to super-mario-bros:
 - make environment using gym_super_mario_bros.make()
 - training path uses ENV instead of ENV.split()
 - in NoopResetEnv wrapper, noops = self.unwrapped.np_random.randint instead of self.unwrapped.np_random.integers
-- using RIGHT_ONLY action space
+- using SIMPLE_MOVEMENT action space
 - disabled NoopReset wrapper
 - added CustomReward wrapper
 - added old style env.render() to render game for human
 - added old style video recorder used in gym 0.23.0
-- made evaluate use epsilon greedy
+- made evaluate use epsilon greedy during training and greedy during final eval
 - evaluate more frequently
 - reduce EPS_DECAY_STEPS, REPLAY_MEMORY_MIN, REPLAY_MEMORY_SIZE by 1/4
 - set GAMMA to 0.9
@@ -38,7 +38,7 @@ from memory import ReplayMemory
 import gym_super_mario_bros
 from old_video_recorder.monitor import Monitor
 
-ENV = 'SuperMarioBros-1-1-v0'
+ENV = 'SuperMarioBros-1-2-v0'
 
 TRAIN_STEPS_MAX = 50_000_000  # train for this many steps, will go a little beyond to finish the current episode
 REPLAY_MEMORY_MIN = 50_000  # minimum amount of accumulated experience before before we begin sampling

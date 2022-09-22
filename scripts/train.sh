@@ -12,4 +12,5 @@ if [ $(whoami) == "ubuntu" ]
 elif [ $(whoami) == "paperspace" ]
     then PYTHON="python3"
 fi
-stdbuf -oL $PYTHON -u dqn.py -m train | tee train-summary.log
+date > train-summary.log
+stdbuf -oL $PYTHON -u dqn.py -m train | tee -a train-summary.log

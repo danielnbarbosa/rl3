@@ -74,7 +74,7 @@ class CustomReward(gym.Wrapper):
 def preprocess_env(env, frameskip, frames):
     #env = NoopResetEnv(env)
     env = SkipFrame(env, skip=frameskip)
-    env = JoypadSpace(env, RIGHT_ONLY)
+    env = JoypadSpace(env, SIMPLE_MOVEMENT)
     env = gym.wrappers.gray_scale_observation.GrayScaleObservation(env)  # convert to grayscale
     env = gym.wrappers.resize_observation.ResizeObservation(env, 84)  # resize to (84,84)
     env = gym.wrappers.frame_stack.FrameStack(env, frames)
