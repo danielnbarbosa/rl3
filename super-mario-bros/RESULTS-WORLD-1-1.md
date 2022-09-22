@@ -10,7 +10,7 @@ episodes: 15,300
 
 memory buffer: None
 tensorboard: runs
-video: video.mp4
+video: video_slowed.mp4
 training graphs: training_graphs.png
 
 latest eval: Average episode reward across 30 episodes: 341.31.  Best reward: 344.45

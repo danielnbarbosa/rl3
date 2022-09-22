@@ -10,7 +10,7 @@ episodes: 52,000
 
 memory buffer: models/latest.pkl
 tensorboard: runs
-video: video.mp4
+video: video_slowed.mp4
 training graphs: training_graphs.png
 
 latest eval: Average episode reward across 30 episodes: 6587.67.  Best reward: 8680.0

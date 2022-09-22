@@ -38,6 +38,8 @@ from memory import ReplayMemory
 import gym_super_mario_bros
 from old_video_recorder.monitor import Monitor
 
+#ENV = 'SuperMarioBros-1-1-v0'
+#ENV = 'SuperMarioBros-1-2-v0'
 ENV = 'SuperMarioBros-v0'
 
 TRAIN_STEPS_MAX = 50_000_000  # train for this many steps, will go a little beyond to finish the current episode
@@ -316,4 +318,4 @@ if __name__ == '__main__':
         agent.train(filename=args.f)
         env.close()
     elif args.m == 'eval':
-        evaluate(args.f, epsilon=0.0, render_mode=args.r)
+        evaluate(args.f, epsilon=0.05, render_mode=args.r)
