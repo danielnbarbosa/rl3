@@ -13,5 +13,6 @@ tensorboard: runs
 video: video_slowed.mp4
 training graphs: training_graphs.png
 
+epsilon = 0.0
 latest eval: Average episode reward across 30 episodes: 341.31.  Best reward: 344.45
 best eval: Average episode reward across 30 episodes: 341.59.  Best reward: 344.25
