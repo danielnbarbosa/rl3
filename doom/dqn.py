@@ -36,7 +36,11 @@ from memory import ReplayMemory
 import pygame
 from vizdoomgym.vizdoomenv import DoomEnv
 
-ENV = 'VizdoomGymBasic-v0'
+#ENV = 'VizdoomGymBasic-v0'
+ENV = 'VizdoomGymCorridor-v0'
+
+#scenario = 'basic.cfg'
+scenario = 'deadly_corridor.cfg'
 
 TRAIN_STEPS_MAX = 50_000_000  # train for this many steps, will go a little beyond to finish the current episode
 REPLAY_MEMORY_MIN = 5_000  # minimum amount of accumulated experience before before we begin sampling
@@ -249,7 +253,7 @@ def evaluate(filename, episodes=30, epsilon=0.05, render_mode=None):
     gym.logger.set_level(gym.logger.ERROR)
     #env = gym.make(ENV, full_action_space=False, frameskip=1, repeat_action_probability=0.25, render_mode=render_mode)
     env = gym.make(ENV)
-    env = DoomEnv("basic.cfg", image_size=(84, 84), max_buttons_pressed=1, to_torch=False, frame_stack=1, frame_skip=4)
+    env = DoomEnv(scenario, image_size=(84, 84), max_buttons_pressed=1, to_torch=False, frame_stack=1, frame_skip=4)
     env = preprocess_env(env, FRAMESKIP, FRAMES)
 
     if render_mode == 'rgb_array':
@@ -273,6 +277,7 @@ def evaluate(filename, episodes=30, epsilon=0.05, render_mode=None):
             while not done:
                 if render_mode == 'human':
                     env.render()
+                    pygame.time.wait(100)
                 action = agent._act(state, epsilon)  # take an action using e-greedy policy
                 state, reward, done, info = agent.env.step(action)  # step the environment
                 episode_reward += reward  # accumulate reward
@@ -308,7 +313,7 @@ if __name__ == '__main__':
         gym.logger.set_level(gym.logger.ERROR)
         #env = gym.make(ENV, full_action_space=False, frameskip=1, repeat_action_probability=0.25)
         env = gym.make(ENV)
-        env = DoomEnv("basic.cfg", image_size=(84, 84), max_buttons_pressed=1, to_torch=False, frame_stack=1, frame_skip=4)
+        env = DoomEnv(scenario, image_size=(84, 84), max_buttons_pressed=1, to_torch=False, frame_stack=1, frame_skip=4)
         env = preprocess_env(env, FRAMESKIP, FRAMES)
         agent = Agent(env)
         agent.train(filename=args.f)
