@@ -3,7 +3,7 @@
 # works on lambda and paperspace
 
 # example:
-# train.sh &
+# ./train.sh &
 
 # lambda
 if [ $(whoami) == "ubuntu" ]

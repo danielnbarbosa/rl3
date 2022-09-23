@@ -39,10 +39,10 @@ from vizdoomgym.vizdoomenv import DoomEnv
 ENV = 'VizdoomGymBasic-v0'
 
 TRAIN_STEPS_MAX = 50_000_000  # train for this many steps, will go a little beyond to finish the current episode
-REPLAY_MEMORY_MIN = 50_000  # minimum amount of accumulated experience before before we begin sampling
-REPLAY_MEMORY_SIZE = 250_000  # max size of replay memory buffer
+REPLAY_MEMORY_MIN = 5_000  # minimum amount of accumulated experience before before we begin sampling
+REPLAY_MEMORY_SIZE = 25_000  # max size of replay memory buffer
 BATCH_SIZE = 32  # number of items to randomly sample from replay memory
-SYNC_TARGET_MODEL_EVERY = 10_000  # how often (in steps) to copy weights to target model
+SYNC_TARGET_MODEL_EVERY = 1_000  # how often (in steps) to copy weights to target model
 LEARN_EVERY = 4  # update model weights every n steps via gradient descent
 FRAMES = 4  # number of observations to stack together to form the state
 FRAMESKIP = 4  # number of frames to repeat the same actions
@@ -50,8 +50,8 @@ LR = 0.00025  # learning rate
 GAMMA = 0.9  # discount rate
 EPS_START = 1  # starting value of epsilon
 EPS_MIN = .1  # minimum value for epsilon
-EPS_DECAY_STEPS = 250_000  # over how many steps to linearly reduce epsilon until it reaches EPS_MIN
-EVAL_MODEL_EVERY = 100_000  # how often (in steps) to evaluate the model
+EPS_DECAY_STEPS = 25_000  # over how many steps to linearly reduce epsilon until it reaches EPS_MIN
+EVAL_MODEL_EVERY = 10_000  # how often (in steps) to evaluate the model
 
 
 class Agent:
@@ -257,7 +257,6 @@ def evaluate(filename, episodes=30, epsilon=0.05, render_mode=None):
         eval_videos_path = Path('eval_videos/' + str(datetime.now()).replace(' ', '-'))  # unique folder per eval run
         print(f'Videos path: {eval_videos_path}')
         env = gym.wrappers.record_video.RecordVideo(env, eval_videos_path, episode_trigger=lambda x: True)
-        
 
     agent = Agent(env)
     agent.model.load_state_dict(torch.load(f'{filename}', map_location=torch.device('cpu')))

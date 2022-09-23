@@ -10,5 +10,9 @@ DIR="/Users/daniel/src/rl3/"
 ENV=$(basename "$(pwd)")
 
 echo "Syncing $ENV"
-scp $DIR/scripts/*.sh $DIR/$ENV/*.py ${USER_IP}:
-scp -r $DIR/$ENV/old_video_recorder ${USER_IP}:
+scp $DIR/scripts/*.sh $DIR/$ENV/*.sh $DIR/$ENV/*.py ${USER_IP}:
+
+if [ $ENV == "super-mario-bros" ]
+    then scp -r $DIR/$ENV/old_video_recorder ${USER_IP}:
+elif [ $ENV == "doom" ]
+    then scp -r $DIR/$ENV/vizdoomgym ${USER_IP}:

@@ -2,6 +2,6 @@
 #tail training console log
 
 # example:
-# tail.sh
+# ./tail.sh
 
 tail -f train-summary.log
