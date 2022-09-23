@@ -1,0 +1,30 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+matplotlib = "*"
+numpy = "*"
+scipy = "*"
+pandas = "*"
+scikit-learn = "*"
+gym = "==0.24.0"
+gym-super-mario-bros = "*"
+flake8 = "*"
+yapf = "*"
+mem-top = "*"
+pympler = "*"
+memory-profiler = "*"
+torch = "*"
+torchvision = "*"
+torchinfo = "*"
+opencv-python = "*"
+tensorboard = "*"
+vizdoomgym = {editable = true, ref = "main", git = "https://github.com/bebeal/VizDoomGym.git"}
+vizdoom = {extras = ["gym"], version = "*"}
+
+[dev-packages]
+
+[requires]
+python_version = "3.10"
