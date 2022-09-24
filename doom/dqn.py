@@ -38,11 +38,13 @@ from vizdoomgym.vizdoomenv import DoomEnv
 
 #ENV = 'VizdoomGymBasic-v0'
 #ENV = 'VizdoomGymCorridor-v0'
-ENV = 'VizdoomGymHealthGathering-v0'
+#ENV = 'VizdoomGymHealthGathering-v0'
+ENV = 'VizdoomGymHealthGatheringSupreme-v0'
 
 #scenario = 'basic.cfg'
 #scenario = 'deadly_corridor.cfg'
-scenario = 'health_gathering.cfg'
+#scenario = 'health_gathering.cfg'
+scenario = 'health_gathering_supreme.cfg'
 
 TRAIN_STEPS_MAX = 50_000_000  # train for this many steps, will go a little beyond to finish the current episode
 REPLAY_MEMORY_MIN = 20_000  # minimum amount of accumulated experience before before we begin sampling
@@ -52,12 +54,12 @@ SYNC_TARGET_MODEL_EVERY = 10_000  # how often (in steps) to copy weights to targ
 LEARN_EVERY = 4  # update model weights every n steps via gradient descent
 FRAMES = 4  # number of observations to stack together to form the state
 FRAMESKIP = 4  # number of frames to repeat the same actions
-LR = 0.00005  # learning rate
+LR = 0.00001  # learning rate
 GAMMA = 0.99  # discount rate
 EPS_START = 1  # starting value of epsilon
 EPS_MIN = .1  # minimum value for epsilon
 EPS_DECAY_STEPS = 100_000  # over how many steps to linearly reduce epsilon until it reaches EPS_MIN
-EVAL_MODEL_EVERY = 50_000  # how often (in steps) to evaluate the model
+EVAL_MODEL_EVERY = 10_000  # how often (in steps) to evaluate the model
 
 
 class Agent:
