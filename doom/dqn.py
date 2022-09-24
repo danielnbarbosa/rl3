@@ -43,19 +43,19 @@ ENV = 'VizdoomGymCorridor-v0'
 scenario = 'deadly_corridor.cfg'
 
 TRAIN_STEPS_MAX = 50_000_000  # train for this many steps, will go a little beyond to finish the current episode
-REPLAY_MEMORY_MIN = 5_000  # minimum amount of accumulated experience before before we begin sampling
-REPLAY_MEMORY_SIZE = 25_000  # max size of replay memory buffer
+REPLAY_MEMORY_MIN = 10_000  # minimum amount of accumulated experience before before we begin sampling
+REPLAY_MEMORY_SIZE = 50_000  # max size of replay memory buffer
 BATCH_SIZE = 32  # number of items to randomly sample from replay memory
 SYNC_TARGET_MODEL_EVERY = 1_000  # how often (in steps) to copy weights to target model
 LEARN_EVERY = 4  # update model weights every n steps via gradient descent
 FRAMES = 4  # number of observations to stack together to form the state
-FRAMESKIP = 4  # number of frames to repeat the same actions
-LR = 0.00025  # learning rate
+FRAMESKIP = 1  # number of frames to repeat the same actions
+LR = 0.00005  # learning rate
 GAMMA = 0.9  # discount rate
 EPS_START = 1  # starting value of epsilon
 EPS_MIN = .1  # minimum value for epsilon
-EPS_DECAY_STEPS = 25_000  # over how many steps to linearly reduce epsilon until it reaches EPS_MIN
-EVAL_MODEL_EVERY = 10_000  # how often (in steps) to evaluate the model
+EPS_DECAY_STEPS = 50_000  # over how many steps to linearly reduce epsilon until it reaches EPS_MIN
+EVAL_MODEL_EVERY = 50_000  # how often (in steps) to evaluate the model
 
 
 class Agent:
@@ -253,7 +253,7 @@ def evaluate(filename, episodes=30, epsilon=0.05, render_mode=None):
     gym.logger.set_level(gym.logger.ERROR)
     #env = gym.make(ENV, full_action_space=False, frameskip=1, repeat_action_probability=0.25, render_mode=render_mode)
     env = gym.make(ENV)
-    env = DoomEnv(scenario, image_size=(84, 84), max_buttons_pressed=1, to_torch=False, frame_stack=1, frame_skip=4)
+    env = DoomEnv(scenario, image_size=(84, 84), max_buttons_pressed=1, to_torch=False, frame_stack=1, frame_skip=FRAMESKIP)
     env = preprocess_env(env, FRAMESKIP, FRAMES)
 
     if render_mode == 'rgb_array':
@@ -313,7 +313,7 @@ if __name__ == '__main__':
         gym.logger.set_level(gym.logger.ERROR)
         #env = gym.make(ENV, full_action_space=False, frameskip=1, repeat_action_probability=0.25)
         env = gym.make(ENV)
-        env = DoomEnv(scenario, image_size=(84, 84), max_buttons_pressed=1, to_torch=False, frame_stack=1, frame_skip=4)
+        env = DoomEnv(scenario, image_size=(84, 84), max_buttons_pressed=1, to_torch=False, frame_stack=1, frame_skip=FRAMESKIP)
         env = preprocess_env(env, FRAMESKIP, FRAMES)
         agent = Agent(env)
         agent.train(filename=args.f)
